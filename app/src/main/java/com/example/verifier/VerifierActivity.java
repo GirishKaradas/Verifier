@@ -1,6 +1,7 @@
 package com.example.verifier;
 
 import android.Manifest;
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -58,6 +59,7 @@ public class VerifierActivity extends BaseActivity {
 
     private static final int CAMERA_PERMISSION_REQUEST_CODE = 100;
     private static final int CAMERA_CAPTURE_IMAGE_REQUEST_CODE = 200;
+    private static final int REQUEST_SELECT_PICTURE = 1;
 
     private ArrayList<DataGrade> arrayList = new ArrayList<>();
     private GradeAdapter adapter;
@@ -67,7 +69,7 @@ public class VerifierActivity extends BaseActivity {
     private Bitmap imageBitmap;
 
     private ImageView imageView;
-    private ExtendedFloatingActionButton fab;
+    private ExtendedFloatingActionButton fab, fabPick;
     private RecyclerView recyclerView;
 
     private TextView tvHeader;
@@ -84,6 +86,7 @@ public class VerifierActivity extends BaseActivity {
         recyclerView = findViewById(R.id.activity_verifier_rcView);
         tvHeader = findViewById(R.id.activity_verifier_tvTitle);
         layoutHead = findViewById(R.id.activity_verifier_layouthead);
+        fabPick = findViewById(R.id.activity_verifier_fabPick);
 
         adapter = new GradeAdapter(this, arrayList);
         recyclerView.setHasFixedSize(true);
@@ -96,6 +99,14 @@ public class VerifierActivity extends BaseActivity {
                 ActivityCompat.requestPermissions(VerifierActivity.this, new String[]{Manifest.permission.CAMERA}, CAMERA_PERMISSION_REQUEST_CODE);
             } else {
                 captureImage();
+            }
+        });
+
+        fabPick.setOnClickListener(view -> {
+            if (ContextCompat.checkSelfPermission(VerifierActivity.this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(VerifierActivity.this, new String[]{Manifest.permission.CAMERA}, CAMERA_PERMISSION_REQUEST_CODE);
+            } else {
+                selectPictureFromGallery(this);
             }
         });
     }
@@ -123,24 +134,32 @@ public class VerifierActivity extends BaseActivity {
 
         if (requestCode == CAMERA_CAPTURE_IMAGE_REQUEST_CODE) {
             if (resultCode == RESULT_OK) {
-                imageBitmap = (Bitmap) data.getExtras().get("data");
-               // imageView.setImageBitmap(imageBitmap);
-
-                // Get the image file and send it to the API
-                Uri imageUri = getImageUri(imageBitmap);
-                File imageFile = new File(imageUri.getPath());
-
-                Log.e(TAG, imageUri.getPath());
-                imageView.setImageURI(imageUri);
-                sendToIon(imageFile);
-             //   sendFile(imageFile.getAbsolutePath());
-              //  sendImageToAPI(imageFile);
+                process(data);
             } else if (resultCode == RESULT_CANCELED) {
                 Toast.makeText(this, "Image capture cancelled", Toast.LENGTH_SHORT).show();
             } else {
                 Toast.makeText(this, "Failed to capture image", Toast.LENGTH_SHORT).show();
             }
+        } else if (requestCode == REQUEST_SELECT_PICTURE && resultCode == RESULT_OK && data != null) {
+            process(data);
+        }else {
+            toast("Invalid Image");
         }
+    }
+
+    private void process(Intent data){
+        imageBitmap = (Bitmap) data.getExtras().get("data");
+        // imageView.setImageBitmap(imageBitmap);
+
+        // Get the image file and send it to the API
+        Uri imageUri = getImageUri(imageBitmap);
+        File imageFile = new File(imageUri.getPath());
+
+        Log.e(TAG, imageUri.getPath());
+        imageView.setImageURI(imageUri);
+        sendToIon(imageFile);
+        //   sendFile(imageFile.getAbsolutePath());
+        //  sendImageToAPI(imageFile);
     }
 
     private Uri getImageUri(Bitmap bitmap) {
@@ -227,6 +246,11 @@ public class VerifierActivity extends BaseActivity {
                         Log.e(TAG, e.toString());
                     }
                 });
+    }
+
+    public static void selectPictureFromGallery(Activity activity) {
+        Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+        activity.startActivityForResult(intent, REQUEST_SELECT_PICTURE);
     }
 
     public static void sendFile(String filePath) {
