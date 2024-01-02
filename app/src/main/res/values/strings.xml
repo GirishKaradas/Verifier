@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Verifier</string>
+    <string name="email_hint">Email</string>
+    <string name="password_hint">Password</string>
+    <string name="app_logo_description">app logo</string>
+    <string name="show_password">Show Password</string>
+    <string name="login">Login</string>
+    <string name="settings_button_description">Open Server Settings</string>
+</resources>
