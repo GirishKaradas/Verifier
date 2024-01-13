@@ -2,13 +2,18 @@ package com.example.verifier;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.Dialog;
+import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
+import android.text.Html;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -26,6 +31,7 @@ import okhttp3.Response;
 import okhttp3.logging.HttpLoggingInterceptor;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.app.ActivityCompat;
@@ -39,9 +45,11 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.koushikdutta.ion.Ion;
+import com.koushikdutta.ion.gif.GifDecoder;
 
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.w3c.dom.Text;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -49,6 +57,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.Map;
 import java.util.Objects;
@@ -59,9 +68,11 @@ public class VerifierActivity extends BaseActivity {
 
     private static final int CAMERA_PERMISSION_REQUEST_CODE = 100;
     private static final int CAMERA_CAPTURE_IMAGE_REQUEST_CODE = 200;
+    private static final int CAMERA_NORMAL_REQUEST_CODE = 300;
     private static final int REQUEST_SELECT_PICTURE = 1;
 
     private ArrayList<DataGrade> arrayList = new ArrayList<>();
+    private ArrayList<String> titles  = new ArrayList<>(Arrays.asList("Contrast", "Overall Quality", "Axial Nonuniformity", "Modulation", "Grid Nonuniformity", "Unused Error Correction", "Fixed Pattern Damage", "NA", "Aperture"));
     private GradeAdapter adapter;
 
     private ConstraintLayout layoutHead;
@@ -111,53 +122,108 @@ public class VerifierActivity extends BaseActivity {
         });
     }
 
+
+    private void captureImage() {
+        if (tinyDB.objectExists(CAMERA_TYPE)){
+            if (tinyDB.getString(CAMERA_TYPE).equals("Normal")){
+                Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                startActivityForResult(intent, CAMERA_NORMAL_REQUEST_CODE);
+            }else {
+
+                Intent intent = new Intent(VerifierActivity.this, CameraActivity.class);
+                startActivityForResult(intent, CAMERA_CAPTURE_IMAGE_REQUEST_CODE);
+            }
+        }else {
+
+            Intent intent = new Intent(VerifierActivity.this, CameraActivity.class);
+            startActivityForResult(intent, CAMERA_CAPTURE_IMAGE_REQUEST_CODE);
+        }
+
+    }
+
     @Override
-    protected void onResume() {
-        super.onResume();
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+/*
         if (imageBitmap == null){
             imageView.setImageDrawable(getDrawable(R.drawable.baseline_image_24));
             layoutHead.setVisibility(View.GONE);
             tvHeader.setText("Scan New Image");
         }else {
             layoutHead.setVisibility(View.VISIBLE);
-        }
-    }
-
-    private void captureImage() {
-        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        startActivityForResult(intent, CAMERA_CAPTURE_IMAGE_REQUEST_CODE);
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
+        }*/
 
         if (requestCode == CAMERA_CAPTURE_IMAGE_REQUEST_CODE) {
             if (resultCode == RESULT_OK) {
+                layoutHead.setVisibility(View.VISIBLE);
                 process(data);
             } else if (resultCode == RESULT_CANCELED) {
+                layoutHead.setVisibility(View.GONE);
+                tvHeader.setText("Scan New Image");
                 Toast.makeText(this, "Image capture cancelled", Toast.LENGTH_SHORT).show();
             } else {
+                tvHeader.setText("Scan New Image");
+                layoutHead.setVisibility(View.GONE);
+                Toast.makeText(this, "Failed to capture image", Toast.LENGTH_SHORT).show();
+            }
+        }else if(requestCode == CAMERA_NORMAL_REQUEST_CODE){
+            if (resultCode == RESULT_OK) {
+                layoutHead.setVisibility(View.VISIBLE);
+                imageBitmap = (Bitmap) data.getExtras().get("data");
+                // imageView.setImageBitmap(imageBitmap);
+
+                // Get the image file and send it to the API
+                Uri imageUri = getImageUri(imageBitmap);
+                File imageFile = new File(imageUri.getPath());
+
+                Log.e(TAG, imageUri.getPath());
+                imageView.setImageURI(imageUri);
+                sendToIon(imageFile);
+                //   sendFile(imageFile.getAbsolutePath());
+                //  sendImageToAPI(imageFile);
+            } else if (resultCode == RESULT_CANCELED) {
+                layoutHead.setVisibility(View.GONE);
+                tvHeader.setText("Scan New Image");
+                Toast.makeText(this, "Image capture cancelled", Toast.LENGTH_SHORT).show();
+            } else {
+                tvHeader.setText("Scan New Image");
+                layoutHead.setVisibility(View.GONE);
                 Toast.makeText(this, "Failed to capture image", Toast.LENGTH_SHORT).show();
             }
         } else if (requestCode == REQUEST_SELECT_PICTURE && resultCode == RESULT_OK && data != null) {
+            layoutHead.setVisibility(View.VISIBLE);
             process(data);
         }else {
+            layoutHead.setVisibility(View.GONE);
             toast("Invalid Image");
         }
     }
 
     private void process(Intent data){
-        imageBitmap = (Bitmap) data.getExtras().get("data");
+        String path = data.getStringExtra("file");
+        File file = new File(path);
+        dlog(path);
+
+        Uri uri = Uri.fromFile(file);
+        imageView.setImageURI(uri);
+        sendToIon(file);
+
+
+
+        // imageView.setImageURI(Uri.fromFile(new File(data.getStringExtra("file"))));
+
+      //  Bitmap bitmap = BitmapFactory.decodeFile(file.getPath());
+       // imageView.setImageBitmap(bitmap);
+
+      //  imageBitmap = (Bitmap) data.getExtras().get("data");
         // imageView.setImageBitmap(imageBitmap);
 
         // Get the image file and send it to the API
-        Uri imageUri = getImageUri(imageBitmap);
-        File imageFile = new File(imageUri.getPath());
-
-        Log.e(TAG, imageUri.getPath());
-        imageView.setImageURI(imageUri);
-        sendToIon(imageFile);
+//        Uri imageUri = getImageUri(imageBitmap);
+//        File imageFile = new File(imageUri.getPath());
+//
+//        Log.e(TAG, imageUri.getPath());
+//        imageView.setImageURI(imageUri);
         //   sendFile(imageFile.getAbsolutePath());
         //  sendImageToAPI(imageFile);
     }
@@ -207,7 +273,22 @@ public class VerifierActivity extends BaseActivity {
         // Code to set the response parameters in the RecyclerView table
     }
 
+    private boolean isinTitle(String s){
+        boolean flag = false;
+        for (String s1 : titles){
+            if (s1.equals(s)){
+                flag = true;
+                break;
+            }
+        }
+        return flag;
+    }
+
     private void sendToIon(File file){
+        tvHeader.setText("Processing");
+        ProgressDialog progressDialog = new ProgressDialog(this);
+        progressDialog.setTitle("Verifying Image");
+        progressDialog.show();
         String url = tinyDB.getString(SERVER_URL) +  ":8080/api/file";
         dlog(url);
         Ion.with(VerifierActivity.this)
@@ -218,6 +299,8 @@ public class VerifierActivity extends BaseActivity {
                 .setMultipartFile("file", "image/png", file)
                 .asJsonObject()
                 .setCallback((e, result) -> {
+                    progressDialog.dismiss();
+                    arrayList.clear();
                     if (e == null){
                         Log.e(TAG, result.toString());
                         try {
@@ -225,25 +308,42 @@ public class VerifierActivity extends BaseActivity {
                                 String s = result.get("jsonData").getAsString();
                                 JsonParser jsonParser = new JsonParser();
                                 JsonObject object = (JsonObject) jsonParser.parse(s);
-                                arrayList.clear();
                                 for (Map.Entry<String, JsonElement> entry : object.entrySet()){
                                     DataGrade grade = new DataGrade(1, entry.getKey(), entry.getValue().toString() + "");
-                                    arrayList.add(grade);
+                                    if (isinTitle(entry.getKey())){
+                                        arrayList.add(grade);
+                                    }
                                     adapter.notifyDataSetChanged();
                                 }
-                                tvHeader.setText("Average : " + overallGrade(arrayList) + " : " + getGrade(new DataGrade(1, "All", overallGrade(arrayList))));
+                                tvHeader.setText("Decoded Successfully");
+                                tvHeader.setTextColor(getColor(R.color.color_accept));
+                             //   tvHeader.setText("Average : " + overallGrade(arrayList) + " : " + getGrade(new DataGrade(1, "All", overallGrade(arrayList))));
                                 Log.e(TAG, "Size; " + arrayList.size());
+                                if (result.has("decoded")){
+                                    String decoded = result.get("decoded").getAsString();
+                                    tvHeader.setText("Decoded Successfully \n" + decoded);
+                                }
                             }else {
-                                toast("Failed to connect");
+                                tvHeader.setText("Code 2: Failed to Test");
+                                tvHeader.setTextColor(getColor(R.color.color_normal));
+                               // toast("Code 2: Failed to Test");
+                                adapter.notifyDataSetChanged();
                             }
                         }catch (Exception exception){
                             Log.e(TAG, exception.toString());
                             adapter.notifyDataSetChanged();
-                            tvHeader.setText("Average : " + overallGrade(arrayList) + " : " + getGrade(new DataGrade(1, "All", overallGrade(arrayList))));
+                            tvHeader.setTextColor(getColor(R.color.design_orange));
+                            tvHeader.setText("Code 3: API Error");
+                            dlog(exception.toString());
+                         //   tvHeader.setText("Average : " + overallGrade(arrayList) + " : " + getGrade(new DataGrade(1, "All", overallGrade(arrayList))));
                         }
 
                     }else {
+                        tvHeader.setText("API call failed\n" + e.toString());
+                        tvHeader.setTextColor(getColor(R.color.color_reject));
                         Log.e(TAG, e.toString());
+                        adapter.notifyDataSetChanged();
+
                     }
                 });
     }
@@ -323,11 +423,27 @@ public class VerifierActivity extends BaseActivity {
 
             holder.tvTitle.setText(list.get(position).getTitle());
             holder.tvValue.setText(list.get(position).getValue());
-            holder.tvGrade.setText(getGrade(list.get(position)));
+
+            holder.tvGrade.setText(list.get(position).getTitle().equals("Aperture") ? "-" : getGrade(list.get(position)));
+            // condition ? Yes/True : No/False
+
+           /* if (list.get(position).getTitle().equals("Aperture")){
+                // Do nothing
+                holder.tvGrade.setText("-");
+            }else {
+                holder.tvGrade.setText(getGrade(list.get(position)));
+            }*/
             holder.tvPerc.setText((Objects.equals(list.get(position).getTitle(), "Contrast Uniformity") || Objects.equals(list.get(position).getTitle(), "Aperture")) ?
                     ((Float.parseFloat(list.get(position).getValue()) * 100) + "") :
                     ((Float.parseFloat(list.get(position).getValue()) * 25) + ""));
-            holder.tvGrade.setBackgroundColor(getColor(getColor(list.get(position))));
+
+            holder.tvGrade.setBackgroundColor(list.get(position).getTitle().equals("Aperture") ? getColor(R.color.color_accept) :getColor(getColor(list.get(position))));
+
+            holder.constraintLayout.setOnClickListener(view -> {
+                showGradeDialog(list.get(position));
+            });
+
+
 
         }
 
@@ -349,6 +465,106 @@ public class VerifierActivity extends BaseActivity {
 
             }
         }
+    }
+
+    private void showGradeDialog(DataGrade grade){
+        AlertDialog.Builder builder = new AlertDialog.Builder(VerifierActivity.this)
+                .setTitle("Grade Info");
+
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_grade, null);
+        builder.setView(dialogView);
+
+      //  AlertDialog alertDialog = builder.create();
+        String info = "";
+        String cause = "";
+        String desc = "";
+        switch (grade.getTitle()){
+            case "Overall Quality":
+    /*            info = "<b>" + grade.getTitle() +":</b><br><br> " +
+                        "<b>Result: </b> "+grade.getValue()+"<br><br> " +
+                        "<b>Details:</b> Gives Overall Quality of the Code";*/
+                desc = "<b>Details:</b><br> Gives Overall Quality of the Code";
+                cause = "";
+                break;
+
+            case "Aperture":
+           /*     info ="<b>" + grade.getTitle() +":</b><br><br> " +
+                        "<b>Result: </b> <br>"+grade.getValue()+"<br><br> " +*/
+                       desc = "<b>Details:</b><br> <br> Gives Aperture of the Code";
+                       cause = "";
+                break;
+            case "Contrast":
+                /*info = "<b>" + grade.getTitle() +":</b><br><br> " +
+                        "<b>Result: </b> "+grade.getValue()+"<br><br> " +*/
+                        desc= "<b>Details:</b><br> The Symbol Contrast is the difference between the highest and the lowest reflectance values in the profile";
+                        cause = "<b>Causes:</b><br> Low background or light area reflectance, due to:<br> ■ Poor choice of substrate (e.g., dark background)<br> ■ Glossy laminate or overwrap<br>High dark module reflectance, due to:<br> ■ Unsuitable formulation or colour of ink<br> ■ Insufficient ink coverage (e.g., on-overlapping dots)<br> Inappropriate angle of illumination particularly for symbols printed using Direct Part Marking (DPM).";
+
+                break;
+            case "Axial Nonuniformity":
+               /* info ="<b>" + grade.getTitle() +":</b><br><br> " +
+                        "<b>Result: </b> "+grade.getValue()+"<br><br> " +*/
+                       desc = "<b>Details:</b><br> Axial Nonuniformity measures and grades (on the 4 to 0 scale) the spacing of the mapping centres and tests for uneven scaling of the symbol along the X or Y axis";
+                       cause = "<b>Causes:</b><br> Mismatch of transport speed in printing with symbol dimensions<br> Printing software errors<br> Verifier axis not perpendicular to symbol plane";
+                break;
+            case "Modulation":
+                /*info ="<b>" + grade.getTitle() +":</b><br><br> " +
+                        "<b>Result: </b> "+grade.getValue()+"<br><br> " +*/
+                        desc = "<b>Details:</b><br> Modulation is related to Symbol Contrast in the sense that it measures the consistency of the reflectance of dark to light areas throughout the symbol";
+                        cause = "<b>Causes:</b><br> Print growth or loss<br> Verifier aperture set too large for X-dimension used<br> Defects - print spots or voids (see defects)<br> Irregular substrate reflectance<br><br> Variation in ink coverage<br> Show-through (often caused by printing on a transparent background)<br> Transparency";
+                break;
+            case "Grid Nonuniformity":
+             /*   info ="<b>" + grade.getTitle() +":</b><br><br> " +
+                        "<b>Result: </b> "+grade.getValue()+"<br><br> " +*/
+                        desc = "<b>Details:</b><br> Grid Nonuniformity measures and grades (on the 4 to 0 scale) the largest vector deviation of the grid intersections, determined by the theoretical position prescribed by the reference decode algorithm and the actual measured result.";
+                        cause = "<b>Causes:</b><br> Problems with the speed during printing (accelerations, decelerations, vibration, or slippage)<br> Variable distance between the print head and the print surface<br> Verifier axis not perpendicular to symbol plane";
+                break;
+            case "Unused Error Correction":
+                /*info ="<b>" + grade.getTitle() +":</b><br><br> " +
+                        "<b>Result: </b> "+grade.getValue()+"<br><br> " +*/
+                        desc = "<b>Details:</b><br> Measures and grades (on the 4 to 0 scale) the reading safety margin that error correction provides. Unused error correction indicates the amount of available Error Correction in a symbol. ";
+                        cause = "<b>Causes:</b><br> Physical damage due to:<br> ■ Scuffing<br> ■ Tearing<br> ■ Deletions<br>  Bit errors due to print defects<br>  Excessive print Growth<br>  Local deformation Misplaced Modules";
+                break;
+            case "Fixed Pattern Damage":
+                /*info ="<b>" + grade.getTitle() +":</b><br><br> " +
+                        "<b>Result: </b> "+grade.getValue()+"<br><br> " +*/
+                        desc = "<b>Details:</b><br> Measures and grades (on the 4 to 0 scale) any damage to the Finder Pattern, Quiet Zone and Clock Track in the symbol.";
+                        cause = "<b>Causes:</b><br> Spots of ink or other dark marks on the background<br> Voids in printed areas<br> Faulty print head elements or other print setup fault.<br> Verifier aperture set too large for Xdimension used";
+                break;
+
+            case "Print Growth":
+                desc = "<b>Details:</b><br> Print growth is not a graded parameter but is a very informative measure for the purposes of process control. It is a measure of how symbols may have grown or shrunk from target size. If the growth or shrinkage is too large, then scanning performance will be impacted.";
+                cause = "<b>Causes:</b><br><br> Largely dependent upon the exact print process used. Factors may include:<br> ■ Ink absorbency of the substrate <br> ■ Dot size (Inkjet and DPM)<br> ■ Incorrect thermal print head settings";
+                break;
+
+            default:
+                // No actions
+                break;
+        }
+
+        String title = "<b>Grade Title: </b> <br>" + grade.getTitle();
+        String value = "<b>Grade Value: </b> <br>" + grade.getValue();
+
+        final TextView tvDesc = dialogView.findViewById(R.id.dialog_grade_tvDesc);
+        final TextView tvTitle = dialogView.findViewById(R.id.dialog_grade_tvTitle);
+        final TextView tvValue = dialogView.findViewById(R.id.dialog_grade_tvValue);
+        final TextView tvCause = dialogView.findViewById(R.id.dialog_grade_tvCause);
+
+        tvDesc.setText(Html.fromHtml(desc, Html.FROM_HTML_MODE_LEGACY));
+        tvCause.setText(Html.fromHtml(cause, Html.FROM_HTML_MODE_LEGACY));
+        tvTitle.setText(Html.fromHtml(title, Html.FROM_HTML_MODE_LEGACY));
+        tvValue.setText(Html.fromHtml(value, Html.FROM_HTML_MODE_LEGACY));
+
+     /*   alertDialog.setMessage(Html.fromHtml(info, Html.FROM_HTML_MODE_LEGACY));
+        alertDialog.setButton(DialogInterface.BUTTON_POSITIVE, "Close", (dialogInterface, i) -> alertDialog.dismiss());
+
+        alertDialog.show();*/
+        builder.setPositiveButton("Close", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                dialogInterface.cancel();
+            }
+        });
+        builder.show();
     }
 
     private String overallGrade(ArrayList<DataGrade> arrayList){

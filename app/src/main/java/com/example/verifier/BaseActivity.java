@@ -52,6 +52,7 @@ public abstract class BaseActivity extends AppCompatActivity {
     public static String SS_MASTER = "SmartScan_Master";
 
     public static String SERVER_URL = "server_url";
+    public static String CAMERA_TYPE = "camera_type";
 
     public interface ArrayListCallback {
         void onCallback(ArrayList value, String e);

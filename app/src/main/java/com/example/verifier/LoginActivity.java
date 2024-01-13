@@ -8,6 +8,7 @@ import android.text.InputType;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.Toast;
 
@@ -67,12 +68,24 @@ public class LoginActivity extends BaseActivity {
 
         final TextInputLayout urlTextInputLayout = dialogView.findViewById(R.id.urlTextInputLayout);
         final TextInputEditText urlEditText = dialogView.findViewById(R.id.urlEditText);
+        final CheckBox checkBox = dialogView.findViewById(R.id.dialog_settings_check);
 
         if (tinyDB.objectExists(SERVER_URL)){
             urlEditText.setText(tinyDB.getString(SERVER_URL));
         }else {
             urlEditText.setText("http://");
         }
+        if (tinyDB.objectExists(CAMERA_TYPE)){
+            checkBox.setChecked(tinyDB.getString(CAMERA_TYPE).equals("Normal"));
+        }else {
+            tinyDB.putString(CAMERA_TYPE, "ADV");
+        }
+        checkBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                tinyDB.putString(CAMERA_TYPE, b ? "Normal" : "ADV");
+            }
+        });
         builder.setPositiveButton("Submit", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {

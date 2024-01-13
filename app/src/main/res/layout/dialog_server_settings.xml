@@ -20,4 +20,12 @@
             android:padding="10dp" />
     </com.google.android.material.textfield.TextInputLayout>
 
+    <CheckBox
+        android:id="@+id/dialog_settings_check"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Normal Camera"
+        android:layout_marginTop="20dp"
+        />
+
 </LinearLayout>
