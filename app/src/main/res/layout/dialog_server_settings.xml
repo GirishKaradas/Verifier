@@ -28,4 +28,20 @@
         android:layout_marginTop="20dp"
         />
 
+    <CheckBox
+        android:id="@+id/dialog_settings_delay"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Process Delay"
+        android:layout_marginTop="20dp"
+        />
+
+    <CheckBox
+        android:id="@+id/dialog_settings_grades"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Grade Calculation(Old)"
+        android:layout_marginTop="20dp"
+        />
+
 </LinearLayout>

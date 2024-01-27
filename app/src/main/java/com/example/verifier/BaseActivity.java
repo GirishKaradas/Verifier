@@ -52,7 +52,9 @@ public abstract class BaseActivity extends AppCompatActivity {
     public static String SS_MASTER = "SmartScan_Master";
 
     public static String SERVER_URL = "server_url";
+    public static String PROCESS_DELAY = "process_delay";
     public static String CAMERA_TYPE = "camera_type";
+    public static String GRADE_TYPE = "grade_type";
 
     public interface ArrayListCallback {
         void onCallback(ArrayList value, String e);
@@ -76,6 +78,13 @@ public abstract class BaseActivity extends AppCompatActivity {
             // Do nothing
         }else {
             tinyDB.putString("isAuto", "false");
+        }
+
+        if (!tinyDB.objectExists(PROCESS_DELAY)){
+            tinyDB.putString(PROCESS_DELAY, "false");
+        }
+        if (!tinyDB.objectExists(GRADE_TYPE)){
+            tinyDB.putString(GRADE_TYPE, "false");
         }
     }
 

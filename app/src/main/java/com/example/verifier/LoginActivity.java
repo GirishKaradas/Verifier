@@ -69,6 +69,8 @@ public class LoginActivity extends BaseActivity {
         final TextInputLayout urlTextInputLayout = dialogView.findViewById(R.id.urlTextInputLayout);
         final TextInputEditText urlEditText = dialogView.findViewById(R.id.urlEditText);
         final CheckBox checkBox = dialogView.findViewById(R.id.dialog_settings_check);
+        final CheckBox checkDelay = dialogView.findViewById(R.id.dialog_settings_delay);
+        final CheckBox checkGrade = dialogView.findViewById(R.id.dialog_settings_grades);
 
         if (tinyDB.objectExists(SERVER_URL)){
             urlEditText.setText(tinyDB.getString(SERVER_URL));
@@ -80,20 +82,34 @@ public class LoginActivity extends BaseActivity {
         }else {
             tinyDB.putString(CAMERA_TYPE, "ADV");
         }
-        checkBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
-                tinyDB.putString(CAMERA_TYPE, b ? "Normal" : "ADV");
-            }
+        if (!tinyDB.objectExists(PROCESS_DELAY)){
+            tinyDB.putString(PROCESS_DELAY, "false");
+        }
+        if (!tinyDB.objectExists(GRADE_TYPE)){
+            tinyDB.putString(GRADE_TYPE, "false");
+        }
+        checkDelay.setChecked(tinyDB.getString(PROCESS_DELAY).equals("true"));
+        checkGrade.setChecked(tinyDB.getString(GRADE_TYPE).equals("true"));
+
+        checkDelay.setOnCheckedChangeListener((compoundButton, b) -> {
+            tinyDB.putString(PROCESS_DELAY, b ? "true" : "false");
+            toast("Process Delay " + (b ? "Enabled" : "Disabled"));
         });
-        builder.setPositiveButton("Submit", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                String enteredUrl = urlEditText.getText().toString();
-                Toast.makeText(LoginActivity.this, "Updated", Toast.LENGTH_SHORT).show();
-                // Save the URL or perform further actions with it
-                tinyDB.putString(SERVER_URL, enteredUrl);
-            }
+        checkBox.setOnCheckedChangeListener((compoundButton, b) -> {
+            tinyDB.putString(CAMERA_TYPE, b ? "Normal" : "ADV");
+            toast(b ? "Normal Camera Selected" : "App Camera Selected");
+        });
+
+        checkGrade.setOnCheckedChangeListener((compoundButton, b) -> {
+            tinyDB.putString(GRADE_TYPE, b ? "true" : "false");
+            toast(b ? "Old Calculation Selected" : "New Calculation Selected");
+        });
+
+        builder.setPositiveButton("Submit", (dialog, which) -> {
+            String enteredUrl = urlEditText.getText().toString();
+            Toast.makeText(LoginActivity.this, "Updated", Toast.LENGTH_SHORT).show();
+            // Save the URL or perform further actions with it
+            tinyDB.putString(SERVER_URL, enteredUrl);
         });
 
         builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {

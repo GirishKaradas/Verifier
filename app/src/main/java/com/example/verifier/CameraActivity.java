@@ -11,6 +11,7 @@ import android.graphics.Matrix;
 import android.hardware.Camera;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
@@ -22,10 +23,13 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.snackbar.BaseTransientBottomBar;
+import com.google.android.material.snackbar.Snackbar;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -34,7 +38,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 
-public class CameraActivity extends AppCompatActivity implements SurfaceHolder.Callback {
+public class CameraActivity extends BaseActivity implements SurfaceHolder.Callback {
 
 
     private static final int REQUEST_CAMERA_PERMISSION = 200;
@@ -48,6 +52,7 @@ public class CameraActivity extends AppCompatActivity implements SurfaceHolder.C
     private boolean isAutoFocusSupported = false;
     private boolean isTouchFocusEnabled = false;
     private ScaleGestureDetector mScaleGestureDetector;
+    private ConstraintLayout layout;
     private float mZoomFactor = 1.0f;
 
     private boolean isCaptured = false;
@@ -71,6 +76,7 @@ public class CameraActivity extends AppCompatActivity implements SurfaceHolder.C
         flashButton = findViewById(R.id.flashButton);
         focusButton = findViewById(R.id.focusButton);
         seekBar = findViewById(R.id.seekBar);
+        layout = findViewById(R.id.activity_camera_layout);
 
       //  mScaleGestureDetector = new ScaleGestureDetector(this, new ScaleListener());
 
@@ -145,7 +151,14 @@ public class CameraActivity extends AppCompatActivity implements SurfaceHolder.C
         }else {
             isCaptured = true;
             if (isCameraInitialized) {
-                camera.takePicture(null, null, pictureCallback);
+                if (tinyDB.objectExists(PROCESS_DELAY) && tinyDB.getString(PROCESS_DELAY).equals("true")){
+                    Snackbar.make(layout, "Please Wait", BaseTransientBottomBar.LENGTH_SHORT).show();
+                    new Handler().postDelayed(() -> {
+                            camera.takePicture(null, null, pictureCallback);
+                        }, 3000);
+                }else {
+                    camera.takePicture(null, null, pictureCallback);
+                }
             }
         }
     }

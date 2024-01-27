@@ -1,6 +1,7 @@
 package com.example.verifier;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Dialog;
 import android.app.ProgressDialog;
@@ -80,13 +81,14 @@ public class VerifierActivity extends BaseActivity {
     private Bitmap imageBitmap;
 
     private ImageView imageView;
-    private ExtendedFloatingActionButton fab, fabPick;
+    private ExtendedFloatingActionButton fab, fabPick, fabTest;
     private RecyclerView recyclerView;
 
     private TextView tvHeader;
 
     public static String TAG = "SOME";
 
+    @SuppressLint("UseCompatLoadingForDrawables")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -98,6 +100,7 @@ public class VerifierActivity extends BaseActivity {
         tvHeader = findViewById(R.id.activity_verifier_tvTitle);
         layoutHead = findViewById(R.id.activity_verifier_layouthead);
         fabPick = findViewById(R.id.activity_verifier_fabPick);
+        fabTest = findViewById(R.id.activity_verifier_fabTest);
 
         adapter = new GradeAdapter(this, arrayList);
         recyclerView.setHasFixedSize(true);
@@ -119,6 +122,11 @@ public class VerifierActivity extends BaseActivity {
             } else {
                 selectPictureFromGallery(this);
             }
+        });
+        fabTest.setOnClickListener(view -> {
+            imageView.setImageDrawable(getDrawable(R.drawable.test));
+            layoutHead.setVisibility(View.VISIBLE);
+            sendToIon(new File(getImageUri(BitmapFactory.decodeResource(context.getResources(), R.drawable.test)).getPath()));
         });
     }
 
@@ -324,7 +332,7 @@ public class VerifierActivity extends BaseActivity {
                                     tvHeader.setText("Decoded Successfully \n" + decoded);
                                 }
                             }else {
-                                tvHeader.setText("Code 2: Failed to Test");
+                                tvHeader.setText("Code 2: Failed to Identify Code");
                                 tvHeader.setTextColor(getColor(R.color.color_normal));
                                // toast("Code 2: Failed to Test");
                                 adapter.notifyDataSetChanged();
@@ -333,13 +341,13 @@ public class VerifierActivity extends BaseActivity {
                             Log.e(TAG, exception.toString());
                             adapter.notifyDataSetChanged();
                             tvHeader.setTextColor(getColor(R.color.design_orange));
-                            tvHeader.setText("Code 3: API Error");
+                            tvHeader.setText("Code 3: Data Format Error");
                             dlog(exception.toString());
                          //   tvHeader.setText("Average : " + overallGrade(arrayList) + " : " + getGrade(new DataGrade(1, "All", overallGrade(arrayList))));
                         }
 
                     }else {
-                        tvHeader.setText("API call failed\n" + e.toString());
+                        tvHeader.setText("API Call Failed\n" + e.toString());
                         tvHeader.setTextColor(getColor(R.color.color_reject));
                         Log.e(TAG, e.toString());
                         adapter.notifyDataSetChanged();
@@ -582,21 +590,37 @@ public class VerifierActivity extends BaseActivity {
     private String getGrade(DataGrade grade){
         float score = Float.parseFloat(grade.getValue());
         score = (grade.getTitle().equals("Contrast Uniformity") || grade.getTitle().equals("Aperture") ? score : grade.getTitle().equals("All") ? score/100 : score/4);
-        if (score >= 1) return "A";
-        else if (score >= 0.75) return "B";
-        else if (score >= 0.5) return "C";
-        else if (score >= 0.25) return "D";
-        else return "F";
+        if (tinyDB.getString(GRADE_TYPE).equals("true")){
+            if (score >= 1) return "A";
+            else if (score >= 0.75) return "B";
+            else if (score >= 0.5) return "C";
+            else if (score >= 0.25) return "D";
+            else return "F";
+        }else {
+            if (score >= 0.875) return "A";
+            else if (score >= 0.625) return "B";
+            else if (score >= 0.375) return "C";
+            else if (score >= 0.125) return "D";
+            else return "F";
+        }
     }
 
     private int getColor(DataGrade grade) {
         float score = Float.parseFloat(grade.getValue());
         score = (grade.getTitle().equals("Contrast Uniformity") || grade.getTitle().equals("Aperture") ? score : grade.getTitle().equals("All") ? score/100 : score/4);
-        if (score >= 1) return R.color.color_accept;
-        else if (score >= 0.75) return R.color.color_normal;
-        else if (score >= 0.5) return R.color.design_orange;
-        else if (score >= 0.25) return R.color.color_reject;
-        else return R.color.white;
+        if (tinyDB.getString(GRADE_TYPE).equals("true")){
+            if (score >= 1) return R.color.color_accept;
+            else if (score >= 0.75) return R.color.color_normal;
+            else if (score >= 0.5) return R.color.design_orange;
+            else if (score >= 0.25) return R.color.color_reject;
+            else return R.color.white;
+        }else {
+            if (score >= 0.875) return R.color.color_accept;
+            else if (score >= 0.625) return R.color.color_normal;
+            else if (score >= 0.375) return R.color.design_orange;
+            else if (score >= 0.125) return R.color.color_reject;
+            else return R.color.white;
+        }
     }
 
 
