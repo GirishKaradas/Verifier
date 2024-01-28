@@ -34,6 +34,7 @@ import okhttp3.logging.HttpLoggingInterceptor;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.PopupMenu;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -64,6 +65,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 
 public class VerifierActivity extends BaseActivity {
 
@@ -73,7 +75,7 @@ public class VerifierActivity extends BaseActivity {
     private static final int REQUEST_SELECT_PICTURE = 1;
 
     private ArrayList<DataGrade> arrayList = new ArrayList<>();
-    private ArrayList<String> titles  = new ArrayList<>(Arrays.asList("Contrast", "Overall Quality", "Axial Nonuniformity", "Modulation", "Grid Nonuniformity", "Unused Error Correction", "Fixed Pattern Damage", "NA", "Aperture"));
+    private ArrayList<String> titles  = new ArrayList<>(Arrays.asList( "Decode", "Contrast", "Overall Quality", "Axial Nonuniformity", "Modulation", "Grid Nonuniformity", "Unused Error Correction", "Fixed Pattern Damage", "NA", "Aperture"));
     private GradeAdapter adapter;
 
     private ConstraintLayout layoutHead;
@@ -124,9 +126,34 @@ public class VerifierActivity extends BaseActivity {
             }
         });
         fabTest.setOnClickListener(view -> {
-            imageView.setImageDrawable(getDrawable(R.drawable.test));
-            layoutHead.setVisibility(View.VISIBLE);
-            sendToIon(new File(getImageUri(BitmapFactory.decodeResource(context.getResources(), R.drawable.test)).getPath()));
+
+           // sendToIon(new File(getImageUri(BitmapFactory.decodeResource(context.getResources(), R.drawable.test)).getPath()));
+
+            androidx.appcompat.widget.PopupMenu popupMenu = new PopupMenu(VerifierActivity.this, fabTest);
+
+            // Inflating popup menu from popup_menu.xml file
+            popupMenu.getMenuInflater().inflate(R.menu.menu_tests, popupMenu.getMenu());
+            popupMenu.setOnMenuItemClickListener(menuItem -> {
+                // Toast message on menu item clicked
+                CharSequence title = menuItem.getTitle();
+                if ("Test 1".contentEquals(title)) {
+                    imageView.setImageDrawable(getDrawable(R.drawable.test));
+                    layoutHead.setVisibility(View.VISIBLE);
+                    sendToIon(new File(getImageUri(BitmapFactory.decodeResource(context.getResources(), R.drawable.test)).getPath()));
+                } else if ("Test 2".contentEquals(title)) {
+                    imageView.setImageDrawable(getDrawable(R.drawable.test2));
+                    layoutHead.setVisibility(View.VISIBLE);
+                    sendToIon(new File(getImageUri(BitmapFactory.decodeResource(context.getResources(), R.drawable.test2)).getPath()));
+                } else if ("Test 3".contentEquals(title)) {
+                    imageView.setImageDrawable(getDrawable(R.drawable.test3));
+                    layoutHead.setVisibility(View.VISIBLE);
+                    sendToIon(new File(getImageUri(BitmapFactory.decodeResource(context.getResources(), R.drawable.test3)).getPath()));
+                }
+                return true;
+            });
+            // Showing the popup menu
+            popupMenu.show();
+
         });
     }
 
@@ -292,6 +319,23 @@ public class VerifierActivity extends BaseActivity {
         return flag;
     }
 
+    private void updateOverall(){
+        int low = 4;
+        for (DataGrade grade : arrayList){
+            dlog("TITLES: " + grade.getTitle() + ":" + grade.getValue());
+            if (grade.getTitle().equals("Aperture") || grade.getTitle().equals("Overall Quality")){
+                // Do nothing
+            }else {
+//                if (Integer.parseInt(grade.getValue()) < low){
+//                    low  = Integer.parseInt(grade.getValue());
+//                }
+                low = Math.min(Integer.parseInt(grade.getValue()), low);
+            }
+        }
+        arrayList.set(0, new DataGrade(0, "Overall Quality", "" + low));
+        adapter.notifyDataSetChanged();
+    }
+
     private void sendToIon(File file){
         tvHeader.setText("Processing");
         ProgressDialog progressDialog = new ProgressDialog(this);
@@ -323,6 +367,7 @@ public class VerifierActivity extends BaseActivity {
                                     }
                                     adapter.notifyDataSetChanged();
                                 }
+                                updateOverall();
                                 tvHeader.setText("Decoded Successfully");
                                 tvHeader.setTextColor(getColor(R.color.color_accept));
                              //   tvHeader.setText("Average : " + overallGrade(arrayList) + " : " + getGrade(new DataGrade(1, "All", overallGrade(arrayList))));
@@ -495,6 +540,12 @@ public class VerifierActivity extends BaseActivity {
                 cause = "";
                 break;
 
+            case "Decode":
+
+                desc = "<b>Details:</b><br> This is the first step in the verification and applies the reference decode algorithm";
+                cause = "<b>Causes:</b><br> Many factors can cause the symbol to fail to decode. A major failure in any of the tested parameters or software errors in the printing system should be checked first.";
+                break;
+
             case "Aperture":
            /*     info ="<b>" + grade.getTitle() +":</b><br><br> " +
                         "<b>Result: </b> <br>"+grade.getValue()+"<br><br> " +*/
@@ -597,10 +648,10 @@ public class VerifierActivity extends BaseActivity {
             else if (score >= 0.25) return "D";
             else return "F";
         }else {
-            if (score >= 0.875) return "A";
-            else if (score >= 0.625) return "B";
-            else if (score >= 0.375) return "C";
-            else if (score >= 0.125) return "D";
+            if (score >= 0.875) return "A"; // 3.5  we get from 0 to 4 4
+            else if (score >= 0.625) return "B"; // 2.5 >>> 3
+            else if (score >= 0.375) return "C"; // 1.5 >>>> 2
+            else if (score >= 0.125) return "D"; // 0.5 >>>> 1
             else return "F";
         }
     }
