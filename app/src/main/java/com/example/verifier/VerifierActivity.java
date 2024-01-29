@@ -1,5 +1,7 @@
 package com.example.verifier;
 
+import static android.graphics.Bitmap.createBitmap;
+
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -49,6 +51,7 @@ import com.google.gson.JsonParser;
 import com.koushikdutta.ion.Ion;
 import com.koushikdutta.ion.gif.GifDecoder;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.w3c.dom.Text;
@@ -76,6 +79,8 @@ public class VerifierActivity extends BaseActivity {
 
     private ArrayList<DataGrade> arrayList = new ArrayList<>();
     private ArrayList<String> titles  = new ArrayList<>(Arrays.asList( "Decode", "Contrast", "Overall Quality", "Axial Nonuniformity", "Modulation", "Grid Nonuniformity", "Unused Error Correction", "Fixed Pattern Damage", "NA", "Aperture"));
+    private ArrayList<String> barTitles  = new ArrayList<>(Arrays.asList( "Overall Quality", "Decode", "Symbol Contrast",  "Minimal Reflectance", "Minimal Edge Contrast", "Modulation", "Defects", "Decodability", "Additional Requirements"));
+
     private GradeAdapter adapter;
 
     private ConstraintLayout layoutHead;
@@ -83,12 +88,13 @@ public class VerifierActivity extends BaseActivity {
     private Bitmap imageBitmap;
 
     private ImageView imageView;
-    private ExtendedFloatingActionButton fab, fabPick, fabTest;
+    private ExtendedFloatingActionButton fab, fabPick, fabTest, fabBar;
     private RecyclerView recyclerView;
 
     private TextView tvHeader;
 
     public static String TAG = "SOME";
+    private boolean isBar = false;
 
     @SuppressLint("UseCompatLoadingForDrawables")
     @Override
@@ -98,6 +104,7 @@ public class VerifierActivity extends BaseActivity {
 
         imageView = findViewById(R.id.activity_verifier_imageview);
         fab = findViewById(R.id.activity_verifier_fab);
+        fabBar = findViewById(R.id.activity_verifier_fabBar);
         recyclerView = findViewById(R.id.activity_verifier_rcView);
         tvHeader = findViewById(R.id.activity_verifier_tvTitle);
         layoutHead = findViewById(R.id.activity_verifier_layouthead);
@@ -114,9 +121,20 @@ public class VerifierActivity extends BaseActivity {
             if (ContextCompat.checkSelfPermission(VerifierActivity.this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(VerifierActivity.this, new String[]{Manifest.permission.CAMERA}, CAMERA_PERMISSION_REQUEST_CODE);
             } else {
+                isBar = false;
                 captureImage();
             }
         });
+        fabBar.setOnClickListener(v -> {
+            if (ContextCompat.checkSelfPermission(VerifierActivity.this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(VerifierActivity.this, new String[]{Manifest.permission.CAMERA}, CAMERA_PERMISSION_REQUEST_CODE);
+            } else {
+                isBar = true;
+                captureImage();
+            }
+        });
+
+
 
         fabPick.setOnClickListener(view -> {
             if (ContextCompat.checkSelfPermission(VerifierActivity.this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
@@ -148,6 +166,10 @@ public class VerifierActivity extends BaseActivity {
                     imageView.setImageDrawable(getDrawable(R.drawable.test3));
                     layoutHead.setVisibility(View.VISIBLE);
                     sendToIon(new File(getImageUri(BitmapFactory.decodeResource(context.getResources(), R.drawable.test3)).getPath()));
+                } else if ("Test 4".contentEquals(title)) {
+                    imageView.setImageDrawable(getDrawable(R.drawable.test4));
+                    layoutHead.setVisibility(View.VISIBLE);
+                    sendToIonBar(new File(getImageUri(BitmapFactory.decodeResource(context.getResources(), R.drawable.test4)).getPath()));
                 }
                 return true;
             });
@@ -174,6 +196,25 @@ public class VerifierActivity extends BaseActivity {
             startActivityForResult(intent, CAMERA_CAPTURE_IMAGE_REQUEST_CODE);
         }
 
+    }
+
+    public static Bitmap cropCenter(Bitmap source) {
+        // Calculate the new dimensions
+        int originalWidth = source.getWidth();
+        int originalHeight = source.getHeight();
+
+        int newWidth = originalWidth * 2 / 3;  // Crop 2/3 of the original width
+        int newHeight = originalHeight / 2;   // Crop half of the original height
+
+        // Calculate the starting point for cropping
+        int startX = (originalWidth - newWidth) / 2;
+        int startY = originalHeight / 4;  // Start from half the height
+
+        // Create a new cropped bitmap
+        Bitmap croppedBitmap = createBitmap(source, startX, startY, newWidth, newHeight);
+
+        // Return the cropped bitmap
+        return croppedBitmap;
     }
 
     @Override
@@ -204,16 +245,34 @@ public class VerifierActivity extends BaseActivity {
         }else if(requestCode == CAMERA_NORMAL_REQUEST_CODE){
             if (resultCode == RESULT_OK) {
                 layoutHead.setVisibility(View.VISIBLE);
-                imageBitmap = (Bitmap) data.getExtras().get("data");
-                // imageView.setImageBitmap(imageBitmap);
 
-                // Get the image file and send it to the API
-                Uri imageUri = getImageUri(imageBitmap);
-                File imageFile = new File(imageUri.getPath());
+                imageBitmap = (Bitmap) data.getExtras().get("data");
+                Uri imageUri;
+                File imageFile;
+
+                if (tinyDB.getString(CROP_CENTER).equals("true")){
+                    dlog("Cropping");
+                    Bitmap cBitmap = cropCenter(imageBitmap);
+                    imageUri = getImageUri(cBitmap);
+                }else {
+                    dlog("Cropping not");
+                    imageUri = getImageUri(imageBitmap);
+                }
+                imageFile = new File(imageUri.getPath());
 
                 Log.e(TAG, imageUri.getPath());
                 imageView.setImageURI(imageUri);
-                sendToIon(imageFile);
+
+
+                if (isBar){
+                    sendToIonBar(imageFile);
+                }else {
+                    if (tinyDB.getString(RED_PLANE).equals("true")){
+                        sendToIonR(imageFile);
+                    }else {
+                        sendToIon(imageFile);
+                    }
+                }
                 //   sendFile(imageFile.getAbsolutePath());
                 //  sendImageToAPI(imageFile);
             } else if (resultCode == RESULT_CANCELED) {
@@ -237,11 +296,31 @@ public class VerifierActivity extends BaseActivity {
     private void process(Intent data){
         String path = data.getStringExtra("file");
         File file = new File(path);
+        File imageFile;
+
+        Uri uri;
+
+        Bitmap bitmap = BitmapFactory.decodeFile(file.getAbsolutePath());
+
+        if (tinyDB.getString(CROP_CENTER).equals("true")){
+            Bitmap cBitmap = cropCenter(bitmap);
+            uri = getImageUri(cBitmap);
+            imageFile = new File(uri.getPath());
+        }else {
+            uri = Uri.fromFile(file);
+            imageFile = new File(uri.getPath());
+        }
         dlog(path);
 
-        Uri uri = Uri.fromFile(file);
+
         imageView.setImageURI(uri);
-        sendToIon(file);
+
+        if (isBar){
+            sendToIonBar(imageFile);
+        }else {
+            sendToIon(imageFile);
+        }
+
 
 
 
@@ -336,12 +415,31 @@ public class VerifierActivity extends BaseActivity {
         adapter.notifyDataSetChanged();
     }
 
+    public static float[] extractFloatArray(String jsonString) {
+        try {
+            // Parse the JSON array
+            JSONArray jsonArray = new JSONArray(jsonString);
+
+            // Extract values into a float array
+            float[] resultArray = new float[jsonArray.length()];
+            for (int i = 0; i < jsonArray.length(); i++) {
+                resultArray[i] = (float) jsonArray.getDouble(i);
+            }
+
+            return resultArray;
+        } catch (JSONException e) {
+            e.printStackTrace(); // Handle JSON parsing errors here
+            return null;
+        }
+    }
+
     private void sendToIon(File file){
         tvHeader.setText("Processing");
         ProgressDialog progressDialog = new ProgressDialog(this);
         progressDialog.setTitle("Verifying Image");
         progressDialog.show();
-        String url = tinyDB.getString(SERVER_URL) +  ":8080/api/file";
+        String url = tinyDB.getString(SERVER_URL) +  (tinyDB.getString(CONTRAST_IMP).equals("true") ? ":8080/api/file" : ":8080/api/fileCon");
+
         dlog(url);
         Ion.with(VerifierActivity.this)
                 .load(url)
@@ -400,6 +498,136 @@ public class VerifierActivity extends BaseActivity {
                     }
                 });
     }
+
+    private void sendToIonR(File file){
+        tvHeader.setText("Processing");
+        ProgressDialog progressDialog = new ProgressDialog(this);
+        progressDialog.setTitle("Verifying Image");
+        progressDialog.show();
+        String url = tinyDB.getString(SERVER_URL) +  (tinyDB.getString(CONTRAST_IMP).equals("true") ? ":8080/api/fileR" : ":8080/api/fileRCon");
+        dlog(url);
+        Ion.with(VerifierActivity.this)
+                .load(url)
+                //  .addHeader("authorization", "Bearer " + tinyDB.getString("email").trim())
+                // .addHeader("Content-Type", "multipart/form-data")
+                .setMultipartParameter("name", "source")
+                .setMultipartFile("file", "image/png", file)
+                .asJsonObject()
+                .setCallback((e, result) -> {
+                    progressDialog.dismiss();
+                    arrayList.clear();
+                    if (e == null){
+                        Log.e(TAG, result.toString());
+                        try {
+                            if (result.isJsonObject() && result.has("jsonData")){
+                                String s = result.get("jsonData").getAsString();
+                                JsonParser jsonParser = new JsonParser();
+                                JsonObject object = (JsonObject) jsonParser.parse(s);
+                                for (Map.Entry<String, JsonElement> entry : object.entrySet()){
+                                    DataGrade grade = new DataGrade(1, entry.getKey(), entry.getValue().toString() + "");
+                                    if (isinTitle(entry.getKey())){
+                                        arrayList.add(grade);
+                                    }
+                                    adapter.notifyDataSetChanged();
+                                }
+                                updateOverall();
+                                tvHeader.setText("Decoded Successfully");
+                                tvHeader.setTextColor(getColor(R.color.color_accept));
+                                //   tvHeader.setText("Average : " + overallGrade(arrayList) + " : " + getGrade(new DataGrade(1, "All", overallGrade(arrayList))));
+                                Log.e(TAG, "Size; " + arrayList.size());
+                                if (result.has("decoded")){
+                                    String decoded = result.get("decoded").getAsString();
+                                    tvHeader.setText("Decoded Successfully \n" + decoded);
+                                }
+                            }else {
+                                tvHeader.setText("Code 2: Failed to Identify Code");
+                                tvHeader.setTextColor(getColor(R.color.color_normal));
+                                // toast("Code 2: Failed to Test");
+                                adapter.notifyDataSetChanged();
+                            }
+                        }catch (Exception exception){
+                            Log.e(TAG, exception.toString());
+                            adapter.notifyDataSetChanged();
+                            tvHeader.setTextColor(getColor(R.color.design_orange));
+                            tvHeader.setText("Code 3: Data Format Error");
+                            dlog(exception.toString());
+                            //   tvHeader.setText("Average : " + overallGrade(arrayList) + " : " + getGrade(new DataGrade(1, "All", overallGrade(arrayList))));
+                        }
+
+                    }else {
+                        tvHeader.setText("API Call Failed\n" + e.toString());
+                        tvHeader.setTextColor(getColor(R.color.color_reject));
+                        Log.e(TAG, e.toString());
+                        adapter.notifyDataSetChanged();
+
+                    }
+                });
+    }
+
+
+    private void sendToIonBar(File file){
+        tvHeader.setText("Processing");
+        ProgressDialog progressDialog = new ProgressDialog(this);
+        progressDialog.setTitle("Verifying Image");
+        progressDialog.show();
+        String url = tinyDB.getString(SERVER_URL) +  ":8080/api/barcode";
+        dlog(url);
+        Ion.with(VerifierActivity.this)
+                .load(url)
+                //  .addHeader("authorization", "Bearer " + tinyDB.getString("email").trim())
+                // .addHeader("Content-Type", "multipart/form-data")
+                .setMultipartParameter("name", "source")
+                .setMultipartFile("file", "image/png", file)
+                .asJsonObject()
+                .setCallback((e, result) -> {
+                    progressDialog.dismiss();
+                    arrayList.clear();
+                    if (e == null){
+                        Log.e(TAG, result.toString());
+                        try {
+                            if (result.isJsonObject() && result.has("jsonData")){
+                                String s = result.get("jsonData").getAsString();
+                                dlog("DATA : " + s);
+                                float[] grades = extractFloatArray(s);
+                                for (int i = 0; i< Objects.requireNonNull(grades).length; i++){
+                                    DataGrade grade = new DataGrade(1, barTitles.get(i), grades[i] + "");
+                                    arrayList.add(grade);
+                                    adapter.notifyDataSetChanged();
+                                }
+                              //  updateOverall();
+                                tvHeader.setText("Decoded Successfully");
+                                tvHeader.setTextColor(getColor(R.color.color_accept));
+                                //   tvHeader.setText("Average : " + overallGrade(arrayList) + " : " + getGrade(new DataGrade(1, "All", overallGrade(arrayList))));
+                                Log.e(TAG, "Size; " + arrayList.size());
+                                if (result.has("decoded")){
+                                    String decoded = result.get("decoded").getAsString();
+                                    tvHeader.setText("Decoded Successfully \n" + decoded);
+                                }
+                            }else {
+                                tvHeader.setText("Code 2: Failed to Identify Code");
+                                tvHeader.setTextColor(getColor(R.color.color_normal));
+                                // toast("Code 2: Failed to Test");
+                                adapter.notifyDataSetChanged();
+                            }
+                        }catch (Exception exception){
+                            Log.e(TAG, exception.toString());
+                            adapter.notifyDataSetChanged();
+                            tvHeader.setTextColor(getColor(R.color.design_orange));
+                            tvHeader.setText("Code 3: Data Format Error");
+                            dlog(exception.toString());
+                            //   tvHeader.setText("Average : " + overallGrade(arrayList) + " : " + getGrade(new DataGrade(1, "All", overallGrade(arrayList))));
+                        }
+
+                    }else {
+                        tvHeader.setText("API Call Failed\n" + e.toString());
+                        tvHeader.setTextColor(getColor(R.color.color_reject));
+                        Log.e(TAG, e.toString());
+                        adapter.notifyDataSetChanged();
+
+                    }
+                });
+    }
+
 
     public static void selectPictureFromGallery(Activity activity) {
         Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);

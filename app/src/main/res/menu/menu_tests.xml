@@ -3,5 +3,5 @@
     <item android:id="@+id/bTest1" android:title="Test 1" />
     <item android:id="@+id/bTest2" android:title="Test 2" />
     <item android:id="@+id/bTest3" android:title="Test 3" />
-
+    <item android:id="@+id/bTest4" android:title="Test 4" />
 </menu>

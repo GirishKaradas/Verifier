@@ -71,6 +71,9 @@ public class LoginActivity extends BaseActivity {
         final CheckBox checkBox = dialogView.findViewById(R.id.dialog_settings_check);
         final CheckBox checkDelay = dialogView.findViewById(R.id.dialog_settings_delay);
         final CheckBox checkGrade = dialogView.findViewById(R.id.dialog_settings_grades);
+        final CheckBox checkRed = dialogView.findViewById(R.id.dialog_settings_red);
+        final CheckBox checkCrop = dialogView.findViewById(R.id.dialog_settings_crop);
+        final CheckBox checkContrast = dialogView.findViewById(R.id.dialog_settings_contrast);
 
         if (tinyDB.objectExists(SERVER_URL)){
             urlEditText.setText(tinyDB.getString(SERVER_URL));
@@ -88,8 +91,20 @@ public class LoginActivity extends BaseActivity {
         if (!tinyDB.objectExists(GRADE_TYPE)){
             tinyDB.putString(GRADE_TYPE, "false");
         }
+        if (!tinyDB.objectExists(RED_PLANE)){
+            tinyDB.putString(RED_PLANE, "false");
+        }
+        if (!tinyDB.objectExists(CROP_CENTER)){
+            tinyDB.putString(CROP_CENTER, "false");
+        }
+        if (!tinyDB.objectExists(CONTRAST_IMP)){
+            tinyDB.putString(CONTRAST_IMP, "false");
+        }
         checkDelay.setChecked(tinyDB.getString(PROCESS_DELAY).equals("true"));
         checkGrade.setChecked(tinyDB.getString(GRADE_TYPE).equals("true"));
+        checkRed.setChecked(tinyDB.getString(RED_PLANE).equals("true"));
+        checkCrop.setChecked(tinyDB.getString(CROP_CENTER).equals("true"));
+        checkContrast.setChecked(tinyDB.getString(CONTRAST_IMP).equals("true"));
 
         checkDelay.setOnCheckedChangeListener((compoundButton, b) -> {
             tinyDB.putString(PROCESS_DELAY, b ? "true" : "false");
@@ -103,6 +118,20 @@ public class LoginActivity extends BaseActivity {
         checkGrade.setOnCheckedChangeListener((compoundButton, b) -> {
             tinyDB.putString(GRADE_TYPE, b ? "true" : "false");
             toast(b ? "Old Calculation Selected" : "New Calculation Selected");
+        });
+
+        checkRed.setOnCheckedChangeListener((compoundButton, b) -> {
+            tinyDB.putString(RED_PLANE, b ? "true" : "false");
+            toast(b ? "Red Plane Enabled" : "Red Plane Disabled");
+        });
+
+        checkCrop.setOnCheckedChangeListener((compoundButton, b) -> {
+            tinyDB.putString(CROP_CENTER, b? "true" : "false");
+            toast(b ? "Crop Enabled" : "Crop Disabled");
+        });
+        checkContrast.setOnCheckedChangeListener((compoundButton, b) -> {
+            tinyDB.putString(CONTRAST_IMP, b ? "true" : "false");
+            toast(b ? "Enabled" : "Disabled");
         });
 
         builder.setPositiveButton("Submit", (dialog, which) -> {

@@ -55,6 +55,9 @@ public abstract class BaseActivity extends AppCompatActivity {
     public static String PROCESS_DELAY = "process_delay";
     public static String CAMERA_TYPE = "camera_type";
     public static String GRADE_TYPE = "grade_type";
+    public static String RED_PLANE = "red_plane";
+    public static String CROP_CENTER = "crop_center";
+    public static String CONTRAST_IMP = "contrast_imp";
 
     public interface ArrayListCallback {
         void onCallback(ArrayList value, String e);
@@ -85,6 +88,12 @@ public abstract class BaseActivity extends AppCompatActivity {
         }
         if (!tinyDB.objectExists(GRADE_TYPE)){
             tinyDB.putString(GRADE_TYPE, "false");
+        }
+        if (!tinyDB.objectExists(RED_PLANE)){
+            tinyDB.putString(RED_PLANE, "false");
+        }
+        if (!tinyDB.objectExists(CROP_CENTER)){
+            tinyDB.putString(CROP_CENTER, "false");
         }
     }
 
