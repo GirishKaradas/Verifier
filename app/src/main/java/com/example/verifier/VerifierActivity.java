@@ -38,6 +38,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.PopupMenu;
+import androidx.camera.core.processing.SurfaceProcessorNode;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -46,6 +47,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.snackbar.Snackbar;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -92,7 +94,7 @@ public class VerifierActivity extends BaseActivity {
     private Bitmap imageBitmap;
 
     private ImageView imageView;
-    private ExtendedFloatingActionButton fab, fabPick, fabTest, fabBar, fabNorm;
+    private ExtendedFloatingActionButton fab, fabPick, fabTest, fabBar, fabNorm, fabWhite;
     private RecyclerView recyclerView;
 
     private TextView tvHeader;
@@ -100,6 +102,7 @@ public class VerifierActivity extends BaseActivity {
 
     public static String TAG = "SOME";
     private boolean isBar = false;
+    private ConstraintLayout layoutMain;
 
     @SuppressLint("UseCompatLoadingForDrawables")
     @Override
@@ -116,6 +119,8 @@ public class VerifierActivity extends BaseActivity {
         fabPick = findViewById(R.id.activity_verifier_fabPick);
         fabTest = findViewById(R.id.activity_verifier_fabTest);
         fabNorm = findViewById(R.id.activity_verifier_fabNorm);
+        fabWhite = findViewById(R.id.activity_verifier_fabWhite);
+        layoutMain = findViewById(R.id.activity_verifier_layoutMain);
 
         adapter = new GradeAdapter(this, arrayList);
         recyclerView.setHasFixedSize(true);
@@ -139,7 +144,15 @@ public class VerifierActivity extends BaseActivity {
                 captureImage();
             }
         });
-        fabNorm.setOnClickListener(new View.OnClickListener() {
+        fabNorm.setOnClickListener(view -> {
+            if (uriNorm1 == null){
+              //  toast("Take Plane Uniform Picture first");
+                Snackbar.make(layoutMain, "Take Plane Uniform Picture first", Snackbar.LENGTH_SHORT).setAction("Okay", null).show();
+            }else {
+                startActivityForResult(new Intent(VerifierActivity.this, CameraActivity.class), CAMERA_CAPTURE_NORM2);
+            }
+        });
+        fabWhite.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 startActivityForResult(new Intent(VerifierActivity.this, CameraActivity.class), CAMERA_CAPTURE_NORM);
@@ -298,9 +311,16 @@ public class VerifierActivity extends BaseActivity {
                 layoutHead.setVisibility(View.VISIBLE);
                 String path = data.getStringExtra("file");
                 File file = new File(path);
-                uriNorm1 = Uri.fromFile(file);
+                if (tinyDB.getString(CROP_CENTER).equals("true")){
+                    Bitmap bmp = BitmapFactory.decodeFile(file.getAbsolutePath());
+                    Bitmap cbmp = cropCenter(bmp);
+                    uriNorm1 = getImageUri(cbmp);
+                }else {
+                    uriNorm1 = Uri.fromFile(file);
+                }
+
                 dlog(path);
-                startActivityForResult(new Intent(VerifierActivity.this, CameraActivity.class), CAMERA_CAPTURE_NORM2);
+              //  startActivityForResult(new Intent(VerifierActivity.this, CameraActivity.class), CAMERA_CAPTURE_NORM2);
               //  process(data);
             } else if (resultCode == RESULT_CANCELED) {
                 layoutHead.setVisibility(View.GONE);
@@ -316,10 +336,24 @@ public class VerifierActivity extends BaseActivity {
                 layoutHead.setVisibility(View.VISIBLE);
                 String path = data.getStringExtra("file");
                 File file = new File(path);
-                uriNorm2 = Uri.fromFile(file);
+
+                if (tinyDB.getString(CROP_CENTER).equals("true")){
+                    Bitmap bmp = BitmapFactory.decodeFile(file.getAbsolutePath());
+                    Bitmap cbmp = cropCenter(bmp);
+                    uriNorm2 = getImageUri(cbmp);
+                }else {
+                    uriNorm2 = Uri.fromFile(file);
+                }
+
                 File file1 = new File(uriNorm1.getPath());
                 File file2 = new File(uriNorm2.getPath());
-                sendToIonNorm(file1, file2);
+                Bitmap bmp1 = BitmapFactory.decodeFile(file1.getAbsolutePath());
+                Bitmap bmp2 = BitmapFactory.decodeFile(file2.getAbsolutePath());
+                if (bmp1.getWidth() == bmp2.getWidth() && bmp2.getHeight() == bmp2.getHeight()){
+                    sendToIonNorm(file1, file2);
+                }else {
+                    toast("Images are not of same size");
+                }
                 dlog(path);
                 //sendToIonNorm();
                 //  process(data);
