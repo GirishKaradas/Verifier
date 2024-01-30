@@ -81,6 +81,8 @@ public class VerifierActivity extends BaseActivity {
 
     private static final int CAMERA_CAPTURE_NORM = 400;
     private static final int CAMERA_CAPTURE_NORM2 = 401;
+
+    private static final int CAMERA_CAPTURE_COPY = 500;
     private static final int REQUEST_SELECT_PICTURE = 1;
 
     private ArrayList<DataGrade> arrayList = new ArrayList<>();
@@ -94,11 +96,12 @@ public class VerifierActivity extends BaseActivity {
     private Bitmap imageBitmap;
 
     private ImageView imageView;
-    private ExtendedFloatingActionButton fab, fabPick, fabTest, fabBar, fabNorm, fabWhite;
+    private ExtendedFloatingActionButton fab, fabPick, fabTest, fabBar, fabNorm, fabWhite, fabCopy;
     private RecyclerView recyclerView;
 
     private TextView tvHeader;
-    private Uri uriNorm1, uriNorm2;
+    private Uri uriNorm1, uriNorm2, uriCopy1, uriCopy2, uriCopy3;
+    private int copyCount = 0;
 
     public static String TAG = "SOME";
     private boolean isBar = false;
@@ -121,6 +124,7 @@ public class VerifierActivity extends BaseActivity {
         fabNorm = findViewById(R.id.activity_verifier_fabNorm);
         fabWhite = findViewById(R.id.activity_verifier_fabWhite);
         layoutMain = findViewById(R.id.activity_verifier_layoutMain);
+        fabCopy = findViewById(R.id.activity_verifier_fabCopy);
 
         adapter = new GradeAdapter(this, arrayList);
         recyclerView.setHasFixedSize(true);
@@ -156,6 +160,13 @@ public class VerifierActivity extends BaseActivity {
             @Override
             public void onClick(View view) {
                 startActivityForResult(new Intent(VerifierActivity.this, CameraActivity.class), CAMERA_CAPTURE_NORM);
+            }
+        });
+        fabCopy.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                copyCount = 0;
+                startActivityForResult(new Intent(VerifierActivity.this, CameraActivity.class), CAMERA_CAPTURE_COPY);
             }
         });
 
@@ -357,6 +368,72 @@ public class VerifierActivity extends BaseActivity {
                 dlog(path);
                 //sendToIonNorm();
                 //  process(data);
+            } else if (resultCode == RESULT_CANCELED) {
+                layoutHead.setVisibility(View.GONE);
+                tvHeader.setText("Scan New Image");
+                Toast.makeText(this, "Image capture cancelled", Toast.LENGTH_SHORT).show();
+            } else {
+                tvHeader.setText("Scan New Image");
+                layoutHead.setVisibility(View.GONE);
+                Toast.makeText(this, "Failed to capture image", Toast.LENGTH_SHORT).show();
+            }
+        }else if (requestCode == CAMERA_CAPTURE_COPY) {
+            if (resultCode == RESULT_OK) {
+                layoutHead.setVisibility(View.VISIBLE);
+                String path = data.getStringExtra("file");
+                File file = new File(path);
+                switch (copyCount){
+                    case 0:
+                        if (tinyDB.getString(CROP_CENTER).equals("true")){
+                            Bitmap bmp = BitmapFactory.decodeFile(file.getAbsolutePath());
+                            Bitmap cbmp = cropCenter(bmp);
+                            uriCopy1 = getImageUri(cbmp);
+                        }else {
+                            uriCopy1 = Uri.fromFile(file);
+                        }
+                        dlog(path);
+                        copyCount++;
+                        startActivityForResult(new Intent(VerifierActivity.this, CameraActivity.class), CAMERA_CAPTURE_COPY);
+                        //  process(data);
+                        break;
+                    case 1:
+                        if (tinyDB.getString(CROP_CENTER).equals("true")){
+                            Bitmap bmp = BitmapFactory.decodeFile(file.getAbsolutePath());
+                            Bitmap cbmp = cropCenter(bmp);
+                            uriCopy2 = getImageUri(cbmp);
+                        }else {
+                            uriCopy2 = Uri.fromFile(file);
+                        }
+                        dlog(path);
+                        copyCount++;
+                        startActivityForResult(new Intent(VerifierActivity.this, CameraActivity.class), CAMERA_CAPTURE_COPY);
+                        //  process(data);
+                        break;
+
+                    case 2:
+                        if (tinyDB.getString(CROP_CENTER).equals("true")){
+                            Bitmap bmp = BitmapFactory.decodeFile(file.getAbsolutePath());
+                            Bitmap cbmp = cropCenter(bmp);
+                            uriCopy3 = getImageUri(cbmp);
+                        }else {
+                            uriCopy3 = Uri.fromFile(file);
+                        }
+                        dlog(path);
+                        copyCount++;
+                       // startActivityForResult(new Intent(VerifierActivity.this, CameraActivity.class), CAMERA_CAPTURE_COPY);
+                        //  process(data);
+                        File file1, file2, file3;
+                        file1 = new File(uriCopy1.getPath());
+                        file2 = new File(uriCopy2.getPath());
+                        file3 = new File(uriCopy3.getPath());
+                        sendtoIonCopy(file1, file2, file3);
+                        break;
+
+                    default:
+                        // DO nothing
+                        break;
+                }
+
             } else if (resultCode == RESULT_CANCELED) {
                 layoutHead.setVisibility(View.GONE);
                 tvHeader.setText("Scan New Image");
@@ -658,6 +735,109 @@ public class VerifierActivity extends BaseActivity {
                     }
                 });
     }
+
+
+    private void sendtoIonCopy(File file, File file2, File file3){
+        tvHeader.setText("Processing");
+        ProgressDialog progressDialog = new ProgressDialog(this);
+        progressDialog.setTitle("Verifying Image");
+        progressDialog.show();
+        String url;
+        url = tinyDB.getString(SERVER_URL) + ":8080/api/fileCopy";
+       /* if (tinyDB.getString(RED_PLANE).equals("true")){
+            url = tinyDB.getString(SERVER_URL) +  (tinyDB.getString(CONTRAST_IMP).equals("true") ? ":8080/api/fileRCon" : ":8080/api/fileR");
+        }else {
+            url = tinyDB.getString(SERVER_URL) +  (tinyDB.getString(CONTRAST_IMP).equals("true") ? ":8080/api/fileCon" : ":8080/api/file");
+        }*/
+
+        dlog(url);
+        Ion.with(VerifierActivity.this)
+                .load(url)
+                //  .addHeader("authorization", "Bearer " + tinyDB.getString("email").trim())
+                // .addHeader("Content-Type", "multipart/form-data")
+                .setMultipartParameter("name", "source")
+                .setMultipartFile("file", "image/png", file)
+                .setMultipartFile("file2", "image/png", file2)
+                .setMultipartFile("file3", "image/png", file3)
+                .asJsonObject()
+                .setCallback((e, result) -> {
+                    progressDialog.dismiss();
+                    arrayList.clear();
+                    if (e == null){
+                        Log.e(TAG, result.toString());
+                        try {
+                            if (result.isJsonObject() && result.has("jsonData")){
+                                String s = result.get("jsonData").getAsString();
+                                String s2 = result.get("jsonData").getAsString();
+                                String s3 = result.get("jsonData").getAsString();
+                                JsonParser jsonParser = new JsonParser();
+                                JsonObject object = (JsonObject) jsonParser.parse(s);
+                                JsonObject object2 = (JsonObject) jsonParser.parse(s2);
+                                JsonObject object3 = (JsonObject) jsonParser.parse(s3);
+                                ArrayList<DataGrade> arrayList1 = new ArrayList<>();
+                                ArrayList<DataGrade> arrayList2 = new ArrayList<>();
+                                ArrayList<DataGrade> arrayList3 = new ArrayList<>();
+                                for (Map.Entry<String, JsonElement> entry : object.entrySet()){
+                                    DataGrade grade = new DataGrade(1, entry.getKey(), entry.getValue().toString() + "");
+                                    if (isinTitle(entry.getKey())){
+                                        arrayList1.add(grade);
+                                    }
+                                }
+                                for (Map.Entry<String, JsonElement> entry : object2.entrySet()){
+                                    DataGrade grade = new DataGrade(1, entry.getKey(), entry.getValue().toString() + "");
+                                    if (isinTitle(entry.getKey())){
+                                        arrayList2.add(grade);
+                                    }
+                                }
+                                for (Map.Entry<String, JsonElement> entry : object3.entrySet()){
+                                    DataGrade grade = new DataGrade(1, entry.getKey(), entry.getValue().toString() + "");
+                                    if (isinTitle(entry.getKey())){
+                                        arrayList3.add(grade);
+                                    }
+                                }
+                                arrayList.clear();
+                                for (int i=0; i<arrayList1.size(); i++){
+                                    float a = Float.parseFloat(arrayList1.get(i).getValue());
+                                    float b = Float.parseFloat(arrayList2.get(i).getValue());
+                                    float c = Float.parseFloat(arrayList3.get(i).getValue());
+                                    float avg = (a + b + c)/3;
+                                    arrayList.add(new DataGrade(1, arrayList1.get(i).getTitle(), avg + ""));
+                                    adapter.notifyDataSetChanged();
+                                }
+                                updateOverall();
+                                tvHeader.setText("Decoded Successfully");
+                                tvHeader.setTextColor(getColor(R.color.color_accept));
+                                //   tvHeader.setText("Average : " + overallGrade(arrayList) + " : " + getGrade(new DataGrade(1, "All", overallGrade(arrayList))));
+                                Log.e(TAG, "Size; " + arrayList.size());
+                                if (result.has("decoded")){
+                                    String decoded = result.get("decoded").getAsString();
+                                    tvHeader.setText("Decoded Successfully \n" + decoded);
+                                }
+                            }else {
+                                tvHeader.setText("Code 2: Failed to Identify Code");
+                                tvHeader.setTextColor(getColor(R.color.color_normal));
+                                // toast("Code 2: Failed to Test");
+                                adapter.notifyDataSetChanged();
+                            }
+                        }catch (Exception exception){
+                            Log.e(TAG, exception.toString());
+                            adapter.notifyDataSetChanged();
+                            tvHeader.setTextColor(getColor(R.color.design_orange));
+                            tvHeader.setText("Code 3: Data Format Error");
+                            dlog(exception.toString());
+                            //   tvHeader.setText("Average : " + overallGrade(arrayList) + " : " + getGrade(new DataGrade(1, "All", overallGrade(arrayList))));
+                        }
+
+                    }else {
+                        tvHeader.setText("API Call Failed\n" + e.toString());
+                        tvHeader.setTextColor(getColor(R.color.color_reject));
+                        Log.e(TAG, e.toString());
+                        adapter.notifyDataSetChanged();
+
+                    }
+                });
+    }
+
 
 
 

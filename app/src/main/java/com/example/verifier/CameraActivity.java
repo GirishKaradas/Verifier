@@ -94,8 +94,8 @@ public class CameraActivity extends BaseActivity implements SurfaceHolder.Callba
             //    camera.startSmoothZoom((int) progress);
 //                camera.zoom
                 Camera.Parameters parameters = camera.getParameters();
-                parameters.setZoom((camera.getParameters().getMaxZoom()/10) * (progress));
-                Log.e("Progress 2 : " , ":" + (camera.getParameters().getMaxZoom()/10) * progress);
+                parameters.setZoom((camera.getParameters().getMaxZoom()/20) * (progress));
+                Log.e("Progress 2 : " , ":" + (camera.getParameters().getMaxZoom()/20) * progress);
                 camera.setParameters(parameters);
             }
 
