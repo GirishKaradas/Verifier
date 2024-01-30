@@ -13,6 +13,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Camera;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
@@ -75,6 +76,9 @@ public class VerifierActivity extends BaseActivity {
     private static final int CAMERA_PERMISSION_REQUEST_CODE = 100;
     private static final int CAMERA_CAPTURE_IMAGE_REQUEST_CODE = 200;
     private static final int CAMERA_NORMAL_REQUEST_CODE = 300;
+
+    private static final int CAMERA_CAPTURE_NORM = 400;
+    private static final int CAMERA_CAPTURE_NORM2 = 401;
     private static final int REQUEST_SELECT_PICTURE = 1;
 
     private ArrayList<DataGrade> arrayList = new ArrayList<>();
@@ -88,10 +92,11 @@ public class VerifierActivity extends BaseActivity {
     private Bitmap imageBitmap;
 
     private ImageView imageView;
-    private ExtendedFloatingActionButton fab, fabPick, fabTest, fabBar;
+    private ExtendedFloatingActionButton fab, fabPick, fabTest, fabBar, fabNorm;
     private RecyclerView recyclerView;
 
     private TextView tvHeader;
+    private Uri uriNorm1, uriNorm2;
 
     public static String TAG = "SOME";
     private boolean isBar = false;
@@ -110,6 +115,7 @@ public class VerifierActivity extends BaseActivity {
         layoutHead = findViewById(R.id.activity_verifier_layouthead);
         fabPick = findViewById(R.id.activity_verifier_fabPick);
         fabTest = findViewById(R.id.activity_verifier_fabTest);
+        fabNorm = findViewById(R.id.activity_verifier_fabNorm);
 
         adapter = new GradeAdapter(this, arrayList);
         recyclerView.setHasFixedSize(true);
@@ -133,6 +139,12 @@ public class VerifierActivity extends BaseActivity {
                 captureImage();
             }
         });
+        fabNorm.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                startActivityForResult(new Intent(VerifierActivity.this, CameraActivity.class), CAMERA_CAPTURE_NORM);
+            }
+        });
 
 
 
@@ -148,6 +160,7 @@ public class VerifierActivity extends BaseActivity {
            // sendToIon(new File(getImageUri(BitmapFactory.decodeResource(context.getResources(), R.drawable.test)).getPath()));
 
             androidx.appcompat.widget.PopupMenu popupMenu = new PopupMenu(VerifierActivity.this, fabTest);
+
 
             // Inflating popup menu from popup_menu.xml file
             popupMenu.getMenuInflater().inflate(R.menu.menu_tests, popupMenu.getMenu());
@@ -267,11 +280,7 @@ public class VerifierActivity extends BaseActivity {
                 if (isBar){
                     sendToIonBar(imageFile);
                 }else {
-                    if (tinyDB.getString(RED_PLANE).equals("true")){
-                        sendToIonR(imageFile);
-                    }else {
-                        sendToIon(imageFile);
-                    }
+                   sendToIon(imageFile);
                 }
                 //   sendFile(imageFile.getAbsolutePath());
                 //  sendImageToAPI(imageFile);
@@ -284,7 +293,46 @@ public class VerifierActivity extends BaseActivity {
                 layoutHead.setVisibility(View.GONE);
                 Toast.makeText(this, "Failed to capture image", Toast.LENGTH_SHORT).show();
             }
-        } else if (requestCode == REQUEST_SELECT_PICTURE && resultCode == RESULT_OK && data != null) {
+        }else if (requestCode == CAMERA_CAPTURE_NORM) {
+            if (resultCode == RESULT_OK) {
+                layoutHead.setVisibility(View.VISIBLE);
+                String path = data.getStringExtra("file");
+                File file = new File(path);
+                uriNorm1 = Uri.fromFile(file);
+                dlog(path);
+                startActivityForResult(new Intent(VerifierActivity.this, CameraActivity.class), CAMERA_CAPTURE_NORM2);
+              //  process(data);
+            } else if (resultCode == RESULT_CANCELED) {
+                layoutHead.setVisibility(View.GONE);
+                tvHeader.setText("Scan New Image");
+                Toast.makeText(this, "Image capture cancelled", Toast.LENGTH_SHORT).show();
+            } else {
+                tvHeader.setText("Scan New Image");
+                layoutHead.setVisibility(View.GONE);
+                Toast.makeText(this, "Failed to capture image", Toast.LENGTH_SHORT).show();
+            }
+        }else if (requestCode == CAMERA_CAPTURE_NORM2) {
+            if (resultCode == RESULT_OK) {
+                layoutHead.setVisibility(View.VISIBLE);
+                String path = data.getStringExtra("file");
+                File file = new File(path);
+                uriNorm2 = Uri.fromFile(file);
+                File file1 = new File(uriNorm1.getPath());
+                File file2 = new File(uriNorm2.getPath());
+                sendToIonNorm(file1, file2);
+                dlog(path);
+                //sendToIonNorm();
+                //  process(data);
+            } else if (resultCode == RESULT_CANCELED) {
+                layoutHead.setVisibility(View.GONE);
+                tvHeader.setText("Scan New Image");
+                Toast.makeText(this, "Image capture cancelled", Toast.LENGTH_SHORT).show();
+            } else {
+                tvHeader.setText("Scan New Image");
+                layoutHead.setVisibility(View.GONE);
+                Toast.makeText(this, "Failed to capture image", Toast.LENGTH_SHORT).show();
+            }
+        }else if (requestCode == REQUEST_SELECT_PICTURE && resultCode == RESULT_OK && data != null) {
             layoutHead.setVisibility(View.VISIBLE);
             process(data);
         }else {
@@ -438,7 +486,12 @@ public class VerifierActivity extends BaseActivity {
         ProgressDialog progressDialog = new ProgressDialog(this);
         progressDialog.setTitle("Verifying Image");
         progressDialog.show();
-        String url = tinyDB.getString(SERVER_URL) +  (tinyDB.getString(CONTRAST_IMP).equals("true") ? ":8080/api/file" : ":8080/api/fileCon");
+        String url;
+        if (tinyDB.getString(RED_PLANE).equals("true")){
+            url = tinyDB.getString(SERVER_URL) +  (tinyDB.getString(CONTRAST_IMP).equals("true") ? ":8080/api/fileRCon" : ":8080/api/fileR");
+        }else {
+            url = tinyDB.getString(SERVER_URL) +  (tinyDB.getString(CONTRAST_IMP).equals("true") ? ":8080/api/fileCon" : ":8080/api/file");
+        }
 
         dlog(url);
         Ion.with(VerifierActivity.this)
@@ -499,12 +552,19 @@ public class VerifierActivity extends BaseActivity {
                 });
     }
 
-    private void sendToIonR(File file){
+    private void sendToIonNorm(File file, File file2){
         tvHeader.setText("Processing");
         ProgressDialog progressDialog = new ProgressDialog(this);
         progressDialog.setTitle("Verifying Image");
         progressDialog.show();
-        String url = tinyDB.getString(SERVER_URL) +  (tinyDB.getString(CONTRAST_IMP).equals("true") ? ":8080/api/fileR" : ":8080/api/fileRCon");
+        String url;
+        url = tinyDB.getString(SERVER_URL) + ":8080/api/fileNorm";
+       /* if (tinyDB.getString(RED_PLANE).equals("true")){
+            url = tinyDB.getString(SERVER_URL) +  (tinyDB.getString(CONTRAST_IMP).equals("true") ? ":8080/api/fileRCon" : ":8080/api/fileR");
+        }else {
+            url = tinyDB.getString(SERVER_URL) +  (tinyDB.getString(CONTRAST_IMP).equals("true") ? ":8080/api/fileCon" : ":8080/api/file");
+        }*/
+
         dlog(url);
         Ion.with(VerifierActivity.this)
                 .load(url)
@@ -512,6 +572,7 @@ public class VerifierActivity extends BaseActivity {
                 // .addHeader("Content-Type", "multipart/form-data")
                 .setMultipartParameter("name", "source")
                 .setMultipartFile("file", "image/png", file)
+                .setMultipartFile("file2", "image/png", file2)
                 .asJsonObject()
                 .setCallback((e, result) -> {
                     progressDialog.dismiss();
@@ -563,6 +624,7 @@ public class VerifierActivity extends BaseActivity {
                     }
                 });
     }
+
 
 
     private void sendToIonBar(File file){
