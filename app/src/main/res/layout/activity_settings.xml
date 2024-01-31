@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+    
+    
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Settings Panel"
+        android:textStyle="bold"
+        android:textSize="24sp"
+        android:layout_margin="8dp"
+        />
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/activity_settings_etLayout"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Server URL">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/activity_settings_etUrl"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="textUri"
+            android:padding="10dp" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/activity_settings_bSubmit"
+        android:text="Submit"
+        android:layout_gravity="right"
+        android:layout_marginTop="4dp"
+        />
+
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="8dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+
+            <CheckBox
+                android:id="@+id/activity_settings_delay"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Process Delay"
+                android:layout_marginTop="20dp"
+                />
+
+            <CheckBox
+                android:id="@+id/activity_settings_grades"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Grade Calculation(Old)"
+                />
+            <CheckBox
+                android:id="@+id/activity_settings_red"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Red Plane Extraction"
+                />
+            <CheckBox
+                android:id="@+id/activity_settings_crop"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Center Crop"
+                />
+
+            <CheckBox
+                android:id="@+id/activity_settings_contrast"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Improve Contrast"
+                />
+
+            <CheckBox
+                android:id="@+id/activity_settings_check"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Normal Camera"
+                />
+
+            <CheckBox
+                android:id="@+id/activity_settings_compress"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Image Compression"
+                />
+
+
+        </LinearLayout>
+
+    </ScrollView>
+</LinearLayout>

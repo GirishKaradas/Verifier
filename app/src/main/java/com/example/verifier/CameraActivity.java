@@ -45,6 +45,8 @@ public class CameraActivity extends BaseActivity implements SurfaceHolder.Callba
     private Camera camera;
     private SurfaceView surfaceView;
     private SurfaceHolder surfaceHolder;
+
+    private ProgressDialog progressDialog;
     private SeekBar seekBar;
     private boolean isCameraInitialized = false;
     private boolean isFlashOn = false;
@@ -154,9 +156,15 @@ public class CameraActivity extends BaseActivity implements SurfaceHolder.Callba
                 if (tinyDB.objectExists(PROCESS_DELAY) && tinyDB.getString(PROCESS_DELAY).equals("true")){
                     Snackbar.make(layout, "Please Wait", BaseTransientBottomBar.LENGTH_SHORT).show();
                     new Handler().postDelayed(() -> {
+                        progressDialog = new ProgressDialog(this);
+                        progressDialog.setTitle("Saving Image");
+                        progressDialog.show();
                             camera.takePicture(null, null, pictureCallback);
                         }, 3000);
                 }else {
+                    progressDialog = new ProgressDialog(this);
+                    progressDialog.setTitle("Saving Image");
+                    progressDialog.show();
                     camera.takePicture(null, null, pictureCallback);
                 }
             }
@@ -244,9 +252,6 @@ public class CameraActivity extends BaseActivity implements SurfaceHolder.Callba
             Toast.makeText(CameraActivity.this, "Failed to save image", Toast.LENGTH_SHORT).show();
             return;
         }
-        ProgressDialog progressDialog = new ProgressDialog(this);
-        progressDialog.setTitle("Saving Image");
-        progressDialog.show();
 
         try {
             // Decode the byte array to obtain a Bitmap
@@ -274,11 +279,18 @@ public class CameraActivity extends BaseActivity implements SurfaceHolder.Callba
 
             // Apply rotation to the Bitmap
             rotatedBitmap = Bitmap.createBitmap(rotatedBitmap, 0, 0, rotatedBitmap.getWidth(), rotatedBitmap.getHeight(), matrix, true);
-
-            // Save the rotated Bitmap to a file
-            FileOutputStream fos = new FileOutputStream(pictureFile);
-            rotatedBitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
-            fos.close();
+            if (tinyDB.getString(COMPRESS).equals("true")){
+                Bitmap resized = Bitmap.createScaledBitmap(rotatedBitmap, rotatedBitmap.getWidth()/3, rotatedBitmap.getHeight()/3, true);
+                // Save the rotated Bitmap to a file
+                FileOutputStream fos = new FileOutputStream(pictureFile);
+                resized.compress(Bitmap.CompressFormat.PNG, 100, fos);
+                fos.close();
+            }else {
+                // Save the rotated Bitmap to a file
+                FileOutputStream fos = new FileOutputStream(pictureFile);
+                rotatedBitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
+                fos.close();
+            }
 
             // Notify the system that a new image is saved
             Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);

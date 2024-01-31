@@ -58,6 +58,7 @@ public abstract class BaseActivity extends AppCompatActivity {
     public static String RED_PLANE = "red_plane";
     public static String CROP_CENTER = "crop_center";
     public static String CONTRAST_IMP = "contrast_imp";
+    public static String COMPRESS = "compress";
 
     public interface ArrayListCallback {
         void onCallback(ArrayList value, String e);

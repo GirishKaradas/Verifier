@@ -360,6 +360,7 @@ public class VerifierActivity extends BaseActivity {
                 File file2 = new File(uriNorm2.getPath());
                 Bitmap bmp1 = BitmapFactory.decodeFile(file1.getAbsolutePath());
                 Bitmap bmp2 = BitmapFactory.decodeFile(file2.getAbsolutePath());
+                imageView.setImageURI(uriNorm2);
                 if (bmp1.getWidth() == bmp2.getWidth() && bmp2.getHeight() == bmp2.getHeight()){
                     sendToIonNorm(file1, file2);
                 }else {
@@ -426,6 +427,7 @@ public class VerifierActivity extends BaseActivity {
                         file1 = new File(uriCopy1.getPath());
                         file2 = new File(uriCopy2.getPath());
                         file3 = new File(uriCopy3.getPath());
+                        imageView.setImageURI(uriCopy3);
                         sendtoIonCopy(file1, file2, file3);
                         break;
 
@@ -567,7 +569,23 @@ public class VerifierActivity extends BaseActivity {
 //                if (Integer.parseInt(grade.getValue()) < low){
 //                    low  = Integer.parseInt(grade.getValue());
 //                }
-                low = Math.min(Integer.parseInt(grade.getValue()), low);
+                low = Math.min(Integer.parseInt(grade.getValue().replaceAll("\"", "")), low);
+            }
+        }
+        arrayList.set(0, new DataGrade(0, "Overall Quality", "" + low));
+        adapter.notifyDataSetChanged();
+    }
+    private void updateOverallFloat(){
+        float low = 4f;
+        for (DataGrade grade : arrayList){
+            dlog("TITLES: " + grade.getTitle() + ":" + grade.getValue());
+            if (grade.getTitle().equals("Aperture") || grade.getTitle().equals("Overall Quality")){
+                // Do nothing
+            }else {
+//                if (Integer.parseInt(grade.getValue()) < low){
+//                    low  = Integer.parseInt(grade.getValue());
+//                }
+                low = Math.min(Float.parseFloat(grade.getValue().replaceAll("\"", "")), low);
             }
         }
         arrayList.set(0, new DataGrade(0, "Overall Quality", "" + low));
@@ -767,36 +785,51 @@ public class VerifierActivity extends BaseActivity {
                         Log.e(TAG, result.toString());
                         try {
                             if (result.isJsonObject() && result.has("jsonData")){
-                                String s = result.get("jsonData").getAsString();
-                                String s2 = result.get("jsonData").getAsString();
-                                String s3 = result.get("jsonData").getAsString();
-                                JsonParser jsonParser = new JsonParser();
-                                JsonObject object = (JsonObject) jsonParser.parse(s);
-                                JsonObject object2 = (JsonObject) jsonParser.parse(s2);
-                                JsonObject object3 = (JsonObject) jsonParser.parse(s3);
                                 ArrayList<DataGrade> arrayList1 = new ArrayList<>();
                                 ArrayList<DataGrade> arrayList2 = new ArrayList<>();
                                 ArrayList<DataGrade> arrayList3 = new ArrayList<>();
-                                for (Map.Entry<String, JsonElement> entry : object.entrySet()){
-                                    DataGrade grade = new DataGrade(1, entry.getKey(), entry.getValue().toString() + "");
-                                    if (isinTitle(entry.getKey())){
-                                        arrayList1.add(grade);
+                                JsonParser jsonParser = new JsonParser();
+
+                                try {
+                                    String s = result.get("jsonData").getAsString();
+                                    JsonObject object = (JsonObject) jsonParser.parse(s);
+                                    for (Map.Entry<String, JsonElement> entry : object.entrySet()){
+                                        DataGrade grade = new DataGrade(1, entry.getKey().replaceAll("\"", ""), entry.getValue().toString().replaceAll("\"", "") + "");
+                                        if (isinTitle(entry.getKey())){
+                                            arrayList1.add(grade);
+                                        }
                                     }
+                                }catch (Exception e1){
+                                    dlog(e1 + "Copy1");
                                 }
-                                for (Map.Entry<String, JsonElement> entry : object2.entrySet()){
-                                    DataGrade grade = new DataGrade(1, entry.getKey(), entry.getValue().toString() + "");
-                                    if (isinTitle(entry.getKey())){
-                                        arrayList2.add(grade);
+
+                                try {
+                                    String s2 = result.get("jsonData").getAsString();
+                                    JsonObject object2 = (JsonObject) jsonParser.parse(s2);
+                                    for (Map.Entry<String, JsonElement> entry : object2.entrySet()){
+                                        DataGrade grade = new DataGrade(1, entry.getKey().replaceAll("\"", ""), entry.getValue().toString().replaceAll("\"", "") + "");
+                                        if (isinTitle(entry.getKey())){
+                                            arrayList2.add(grade);
+                                        }
                                     }
+                                }catch (Exception e1){
+                                    dlog(e1 + "Copy2");
                                 }
-                                for (Map.Entry<String, JsonElement> entry : object3.entrySet()){
-                                    DataGrade grade = new DataGrade(1, entry.getKey(), entry.getValue().toString() + "");
-                                    if (isinTitle(entry.getKey())){
-                                        arrayList3.add(grade);
+
+                                try {
+                                    String s3 = result.get("jsonData").getAsString();
+                                    JsonObject object3 = (JsonObject) jsonParser.parse(s3);
+                                    for (Map.Entry<String, JsonElement> entry : object3.entrySet()){
+                                        DataGrade grade = new DataGrade(1, entry.getKey().replaceAll("\"", ""), entry.getValue().toString().replaceAll("\"", "") + "");
+                                        if (isinTitle(entry.getKey())){
+                                            arrayList3.add(grade);
+                                        }
                                     }
+                                }catch (Exception e1){
+                                    dlog(e1 + "Copy3");
                                 }
-                                arrayList.clear();
                                 for (int i=0; i<arrayList1.size(); i++){
+                                    dlog("phase 1: " + i);
                                     float a = Float.parseFloat(arrayList1.get(i).getValue());
                                     float b = Float.parseFloat(arrayList2.get(i).getValue());
                                     float c = Float.parseFloat(arrayList3.get(i).getValue());
@@ -804,7 +837,8 @@ public class VerifierActivity extends BaseActivity {
                                     arrayList.add(new DataGrade(1, arrayList1.get(i).getTitle(), avg + ""));
                                     adapter.notifyDataSetChanged();
                                 }
-                                updateOverall();
+
+                                updateOverallFloat();
                                 tvHeader.setText("Decoded Successfully");
                                 tvHeader.setTextColor(getColor(R.color.color_accept));
                                 //   tvHeader.setText("Average : " + overallGrade(arrayList) + " : " + getGrade(new DataGrade(1, "All", overallGrade(arrayList))));
