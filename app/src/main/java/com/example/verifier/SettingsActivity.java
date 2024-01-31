@@ -2,11 +2,16 @@ package com.example.verifier;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.os.Bundle;
+import android.text.Html;
+import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.Toast;
 
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
@@ -16,6 +21,7 @@ public class SettingsActivity extends BaseActivity {
     private TextInputEditText urlEditText;
     private CheckBox checkBox, checkDelay, checkGrade, checkRed, checkCrop, checkContrast, checkCompress;
     private Button bSubmit;
+    private FloatingActionButton fabInfo;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -33,6 +39,7 @@ public class SettingsActivity extends BaseActivity {
         checkContrast = findViewById(R.id.activity_settings_contrast);
         checkCompress = findViewById(R.id.activity_settings_compress);
         bSubmit = findViewById(R.id.activity_settings_bSubmit);
+        fabInfo = findViewById(R.id.activity_settings_fabInfo);
 
 
         if (tinyDB.objectExists(SERVER_URL)){
@@ -109,5 +116,32 @@ public class SettingsActivity extends BaseActivity {
             tinyDB.putString(SERVER_URL, enteredUrl);
             toast("Updated");
         });
+
+        fabInfo.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                openDialog();
+            }
+        });
+    }
+
+    private void openDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this)
+                .setTitle("Settings Info");
+
+        AlertDialog alertDialog = builder.create();
+        String info = "<b>Server URL:</b> Enter Server URL for Verifier<br><br> " +
+                "<b>Process Delay: </b> Delay while capturing the image from camera<br><br> " +
+                "<b>Grade Calculation(Old):</b> Grade calculation based on new and old<br><br> " +
+                "<b>Red Plane Extraction:</b> Used for converting RGB images to Grayscale images<br><br> " +
+                "<b>Center Crop:</b> Crops the image between the indicator while capturing the image<br><br> " +
+                "<b>Improve Contrast:</b> Improves the contrast of the image while decoding <br><br> " +
+                "<b>Normal Camera:</b> Switch between Device camera and App camera<br><br> " +
+                "<b>Image Compression:</b> Compress images captured from camera before sending for decoding";
+
+        alertDialog.setMessage(Html.fromHtml(info, Html.FROM_HTML_MODE_LEGACY));
+        alertDialog.setButton(DialogInterface.BUTTON_POSITIVE, "Close", (dialogInterface, i) -> alertDialog.dismiss());
+
+        alertDialog.show();
     }
 }
