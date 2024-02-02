@@ -59,6 +59,7 @@ public abstract class BaseActivity extends AppCompatActivity {
     public static String CROP_CENTER = "crop_center";
     public static String CONTRAST_IMP = "contrast_imp";
     public static String COMPRESS = "compress";
+    public static String MULTI_FACTOR = "0.01";
 
     public interface ArrayListCallback {
         void onCallback(ArrayList value, String e);
@@ -66,6 +67,7 @@ public abstract class BaseActivity extends AppCompatActivity {
     public interface BooleanCallback {
         void onCallback(Boolean aBoolean, String e);
     }
+
 
     public interface JsonCallback {
         void onCallback(JsonObject object, String e);
@@ -415,6 +417,24 @@ public abstract class BaseActivity extends AppCompatActivity {
         return Math.abs(a - b) < x;
     }
 
+    public static boolean isValidFloat(String input) {
+        try {
+            Float.parseFloat(input);
+            return true;
+        } catch (NumberFormatException e) {
+            // The input is not a valid float
+            return false;
+        }
+    }
+    public static boolean isValidInt(String input) {
+        try {
+            Integer.parseInt(input);
+            return true;
+        } catch (NumberFormatException e) {
+            // The input is not a valid float
+            return false;
+        }
+    }
 
 
 }

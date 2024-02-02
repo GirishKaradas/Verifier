@@ -622,11 +622,17 @@ public class VerifierActivity extends BaseActivity {
             url = tinyDB.getString(SERVER_URL) +  (tinyDB.getString(CONTRAST_IMP).equals("true") ? ":8080/api/fileCon" : ":8080/api/file");
         }
 
+        JsonObject objectx = new JsonObject();
+        objectx.addProperty("rplane", tinyDB.getString(RED_PLANE));
+        objectx.addProperty("contrast", tinyDB.getString(CONTRAST_IMP));
+        objectx.addProperty("multi_factor", tinyDB.getString(MULTI_FACTOR));
+
         dlog(url);
         Ion.with(VerifierActivity.this)
                 .load(url)
                 //  .addHeader("authorization", "Bearer " + tinyDB.getString("email").trim())
                // .addHeader("Content-Type", "multipart/form-data")
+                .setMultipartParameter("data", objectx.toString())
                 .setMultipartParameter("name", "source")
                 .setMultipartFile("file", "image/png", file)
                 .asJsonObject()
@@ -1139,7 +1145,7 @@ public class VerifierActivity extends BaseActivity {
         }
 
         String title = "<b>Grade Title: </b> <br>" + grade.getTitle();
-        String value = "<b>Grade Value: </b> <br>" + grade.getValue();
+        String value = "<b>Grade Value: </b> <br>" + grade.getValue() + "<b>" + getGrade(grade) + "</b>";
 
         final TextView tvDesc = dialogView.findViewById(R.id.dialog_grade_tvDesc);
         final TextView tvTitle = dialogView.findViewById(R.id.dialog_grade_tvTitle);

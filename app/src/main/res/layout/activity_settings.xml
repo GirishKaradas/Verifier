@@ -52,32 +52,19 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-
-            <CheckBox
-                android:id="@+id/activity_settings_delay"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Process Delay"
-                android:layout_marginTop="20dp"
-                />
-
             <CheckBox
                 android:id="@+id/activity_settings_grades"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Grade Calculation(Old)"
+                android:visibility="gone"
                 />
             <CheckBox
                 android:id="@+id/activity_settings_red"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Red Plane Extraction"
-                />
-            <CheckBox
-                android:id="@+id/activity_settings_crop"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Center Crop"
+                android:layout_marginTop="20dp"
                 />
 
             <CheckBox
@@ -88,10 +75,10 @@
                 />
 
             <CheckBox
-                android:id="@+id/activity_settings_check"
+                android:id="@+id/activity_settings_crop"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Normal Camera"
+                android:text="Center Crop"
                 />
 
             <CheckBox
@@ -99,6 +86,18 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Image Compression"
+                />
+            <CheckBox
+                android:id="@+id/activity_settings_check"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Normal Camera"
+                />
+            <CheckBox
+                android:id="@+id/activity_settings_delay"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Process Delay"
                 />
 
             <com.google.android.material.floatingactionbutton.FloatingActionButton
