@@ -7,10 +7,12 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Dialog;
 import android.app.ProgressDialog;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Camera;
@@ -42,6 +44,7 @@ import androidx.camera.core.processing.SurfaceProcessorNode;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.loader.content.CursorLoader;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -63,6 +66,7 @@ import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -207,6 +211,8 @@ public class VerifierActivity extends BaseActivity {
                     imageView.setImageDrawable(getDrawable(R.drawable.test4));
                     layoutHead.setVisibility(View.VISIBLE);
                     sendToIonBar(new File(getImageUri(BitmapFactory.decodeResource(context.getResources(), R.drawable.test4)).getPath()));
+                }else if ("Gallery".contentEquals(title)){
+                    selectPictureFromGallery(VerifierActivity.this);
                 }
                 return true;
             });
@@ -447,10 +453,49 @@ public class VerifierActivity extends BaseActivity {
             }
         }else if (requestCode == REQUEST_SELECT_PICTURE && resultCode == RESULT_OK && data != null) {
             layoutHead.setVisibility(View.VISIBLE);
-            process(data);
+            Uri uri = data.getData();
+            File file = convertUriToPngFile(uri, VerifierActivity.this);
+            imageView.setImageURI(uri);
+            sendToIon(file);
         }else {
             layoutHead.setVisibility(View.GONE);
             toast("Invalid Image");
+        }
+    }
+
+    private File convertUriToFile(Uri uri) {
+        String[] projection = {MediaStore.Images.Media.DATA};
+        CursorLoader cursorLoader = new CursorLoader(this, uri, projection, null, null, null);
+        Cursor cursor = cursorLoader.loadInBackground();
+
+        int column_index = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
+        cursor.moveToFirst();
+
+        String imagePath = cursor.getString(column_index);
+        cursor.close();
+
+        return new File(imagePath);
+    }
+    private File convertUriToPngFile(Uri uri, Context context) {
+        try {
+            ContentResolver contentResolver = context.getContentResolver();
+            InputStream inputStream = contentResolver.openInputStream(uri);
+
+            // Decode the input stream into a Bitmap
+            Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+
+            // Create a File object for the PNG file
+            File pngFile = new File(context.getExternalCacheDir(), "selected_image.png");
+
+            // Compress the bitmap and save it as a PNG file
+            try (FileOutputStream fileOutputStream = new FileOutputStream(pngFile)) {
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, fileOutputStream);
+            }
+
+            return pngFile;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
         }
     }
 
@@ -610,22 +655,33 @@ public class VerifierActivity extends BaseActivity {
         }
     }
 
+    private float getFactor(){
+        String s = tinyDB.getString(MULTI_FACTOR);
+        float aFloat = 0.1f;
+        try {
+            aFloat = Float.parseFloat(s);
+        }catch (Exception e){
+            dlog(e.toString());
+        }
+        return aFloat;
+    }
+
     private void sendToIon(File file){
         tvHeader.setText("Processing");
         ProgressDialog progressDialog = new ProgressDialog(this);
         progressDialog.setTitle("Verifying Image");
         progressDialog.show();
-        String url;
-        if (tinyDB.getString(RED_PLANE).equals("true")){
+        String url = tinyDB.getString(SERVER_URL) + ":8080/api/file";
+       /* if (tinyDB.getString(RED_PLANE).equals("true")){
             url = tinyDB.getString(SERVER_URL) +  (tinyDB.getString(CONTRAST_IMP).equals("true") ? ":8080/api/fileRCon" : ":8080/api/fileR");
         }else {
             url = tinyDB.getString(SERVER_URL) +  (tinyDB.getString(CONTRAST_IMP).equals("true") ? ":8080/api/fileCon" : ":8080/api/file");
-        }
+        }*/
 
         JsonObject objectx = new JsonObject();
-        objectx.addProperty("rplane", tinyDB.getString(RED_PLANE));
-        objectx.addProperty("contrast", tinyDB.getString(CONTRAST_IMP));
-        objectx.addProperty("multi_factor", tinyDB.getString(MULTI_FACTOR));
+        objectx.addProperty("rplane", tinyDB.getString(RED_PLANE).equals("true"));
+        objectx.addProperty("contrast", tinyDB.getString(CONTRAST_IMP).equals("true"));
+        objectx.addProperty("multi_factor", getFactor());
 
         dlog(url);
         Ion.with(VerifierActivity.this)
@@ -653,7 +709,9 @@ public class VerifierActivity extends BaseActivity {
                                     }
                                     adapter.notifyDataSetChanged();
                                 }
-                                updateOverall();
+                                if (!tinyDB.getString(GRADE_TYPE).equals("true")){
+                                    updateOverall();
+                                }
                                 tvHeader.setText("Decoded Successfully");
                                 tvHeader.setTextColor(getColor(R.color.color_accept));
                              //   tvHeader.setText("Average : " + overallGrade(arrayList) + " : " + getGrade(new DataGrade(1, "All", overallGrade(arrayList))));
@@ -700,11 +758,17 @@ public class VerifierActivity extends BaseActivity {
             url = tinyDB.getString(SERVER_URL) +  (tinyDB.getString(CONTRAST_IMP).equals("true") ? ":8080/api/fileCon" : ":8080/api/file");
         }*/
 
+        JsonObject objectx = new JsonObject();
+        objectx.addProperty("rplane", tinyDB.getString(RED_PLANE).equals("true"));
+        objectx.addProperty("contrast", tinyDB.getString(CONTRAST_IMP).equals("true"));
+        objectx.addProperty("multi_factor", getFactor());
+
         dlog(url);
         Ion.with(VerifierActivity.this)
                 .load(url)
                 //  .addHeader("authorization", "Bearer " + tinyDB.getString("email").trim())
                 // .addHeader("Content-Type", "multipart/form-data")
+                .setMultipartParameter("data", objectx.toString())
                 .setMultipartParameter("name", "source")
                 .setMultipartFile("file", "image/png", file)
                 .setMultipartFile("file2", "image/png", file2)
@@ -774,11 +838,18 @@ public class VerifierActivity extends BaseActivity {
             url = tinyDB.getString(SERVER_URL) +  (tinyDB.getString(CONTRAST_IMP).equals("true") ? ":8080/api/fileCon" : ":8080/api/file");
         }*/
 
+        JsonObject objectx = new JsonObject();
+        objectx.addProperty("rplane", tinyDB.getString(RED_PLANE).equals("true"));
+        objectx.addProperty("contrast", tinyDB.getString(CONTRAST_IMP).equals("true"));
+        objectx.addProperty("multi_factor", getFactor());
+
+
         dlog(url);
         Ion.with(VerifierActivity.this)
                 .load(url)
                 //  .addHeader("authorization", "Bearer " + tinyDB.getString("email").trim())
                 // .addHeader("Content-Type", "multipart/form-data")
+                .setMultipartParameter("data", objectx.toString())
                 .setMultipartParameter("name", "source")
                 .setMultipartFile("file", "image/png", file)
                 .setMultipartFile("file2", "image/png", file2)
@@ -878,20 +949,24 @@ public class VerifierActivity extends BaseActivity {
                 });
     }
 
-
-
-
     private void sendToIonBar(File file){
         tvHeader.setText("Processing");
         ProgressDialog progressDialog = new ProgressDialog(this);
         progressDialog.setTitle("Verifying Image");
         progressDialog.show();
         String url = tinyDB.getString(SERVER_URL) +  ":8080/api/barcode";
+
+
+        JsonObject objectx = new JsonObject();
+        objectx.addProperty("rplane", tinyDB.getString(RED_PLANE).equals("true"));
+        objectx.addProperty("contrast", tinyDB.getString(CONTRAST_IMP).equals("true"));
+        objectx.addProperty("multi_factor", getFactor());
         dlog(url);
         Ion.with(VerifierActivity.this)
                 .load(url)
                 //  .addHeader("authorization", "Bearer " + tinyDB.getString("email").trim())
                 // .addHeader("Content-Type", "multipart/form-data")
+                .setMultipartParameter("data", objectx.toString())
                 .setMultipartParameter("name", "source")
                 .setMultipartFile("file", "image/png", file)
                 .asJsonObject()

@@ -72,6 +72,16 @@ public abstract class BaseActivity extends AppCompatActivity {
     public interface JsonCallback {
         void onCallback(JsonObject object, String e);
     }
+    private Boolean isFloat(String s){
+        Boolean flag = false;
+        try {
+            Float aFloat = Float.parseFloat(s);
+            flag = true;
+        }catch (Exception e){
+            dlog(e.toString());
+        }
+        return flag;
+    }
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -423,6 +433,7 @@ public abstract class BaseActivity extends AppCompatActivity {
             return true;
         } catch (NumberFormatException e) {
             // The input is not a valid float
+            dlog(e.toString());
             return false;
         }
     }

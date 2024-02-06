@@ -185,10 +185,8 @@
         android:id="@+id/activity_verifier_fabPick"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        android:text="Gallery"
         android:visibility="gone"
-        app:icon="@drawable/baseline_add_24"
+        app:icon="@drawable/baseline_perm_media_24"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintRight_toLeftOf="@id/activity_verifier_fab" />
 

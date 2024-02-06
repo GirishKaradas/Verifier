@@ -4,4 +4,5 @@
     <item android:id="@+id/bTest2" android:title="Test 2" android:icon="@drawable/baseline_qr_code_2_24" android:iconTint="@color/black" android:iconTintMode="src_in" />
     <item android:id="@+id/bTest3" android:title="Test 3" android:icon="@drawable/baseline_qr_code_2_24" android:iconTint="@color/black" android:iconTintMode="src_in" />
     <item android:id="@+id/bTest4" android:title="Test 4" android:icon="@drawable/baseline_bar_chart_24" android:iconTint="@color/black" android:iconTintMode="src_in" />
+    <item android:id="@+id/bGallery" android:title="Gallery" android:icon="@drawable/baseline_perm_media_24" android:iconTint="@color/black" android:iconTintMode="src_in" />
 </menu>

@@ -15,12 +15,14 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
+import java.util.Objects;
+
 public class SettingsActivity extends BaseActivity {
 
     private TextInputLayout urlTextInputLayout;
-    private TextInputEditText urlEditText;
+    private TextInputEditText urlEditText, etFactor;
     private CheckBox checkBox, checkDelay, checkGrade, checkRed, checkCrop, checkContrast, checkCompress;
-    private Button bSubmit;
+    private Button bSubmit, bFactor;
     private FloatingActionButton fabInfo;
 
     @Override
@@ -40,12 +42,19 @@ public class SettingsActivity extends BaseActivity {
         checkCompress = findViewById(R.id.activity_settings_compress);
         bSubmit = findViewById(R.id.activity_settings_bSubmit);
         fabInfo = findViewById(R.id.activity_settings_fabInfo);
+        etFactor = findViewById(R.id.activity_settings_etFactor);
+        bFactor = findViewById(R.id.activity_settings_bFactor);
 
 
         if (tinyDB.objectExists(SERVER_URL)){
             urlEditText.setText(tinyDB.getString(SERVER_URL));
         }else {
             urlEditText.setText("http://");
+        }
+        if (tinyDB.objectExists(MULTI_FACTOR)){
+            etFactor.setText(tinyDB.getString(MULTI_FACTOR));
+        }else {
+            etFactor.setText("0.01");
         }
         if (tinyDB.objectExists(CAMERA_TYPE)){
             checkBox.setChecked(tinyDB.getString(CAMERA_TYPE).equals("Normal"));
@@ -110,11 +119,20 @@ public class SettingsActivity extends BaseActivity {
         });
 
         bSubmit.setOnClickListener(v -> {
-            String enteredUrl = urlEditText.getText().toString();
+            String enteredUrl = Objects.requireNonNull(urlEditText.getText()).toString();
 
             // Save the URL or perform further actions with it
             tinyDB.putString(SERVER_URL, enteredUrl);
             toast("Updated");
+        });
+        bFactor.setOnClickListener(view -> {
+            if (!isValidFloat(etFactor.getText().toString())){
+                toast("Enter Valid Number");
+            }else {
+                tinyDB.putString(MULTI_FACTOR, etFactor.getText().toString());
+                toast("Multiplier Factor Updated");
+            }
+
         });
 
         fabInfo.setOnClickListener(new View.OnClickListener() {
